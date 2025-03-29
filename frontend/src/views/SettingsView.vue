@@ -335,7 +335,7 @@ const saveServerSettings = async () => {
     }
     
     showSuccess('Settings saved successfully')
-    await authStore.loadSettings()
+    await authStore.getSettings()
   } catch (error) {
     console.error('Error saving settings:', error)
     errorMessage.value = error.message || 'Failed to save settings'
