@@ -1,6 +1,8 @@
 from typing import Dict, Tuple, Optional
 import caldav
-from urllib.parse import urlparse
+from caldav.davclient import DAVClient
+from caldav.objects import Principal, AddressBook
+from urllib.parse import urlparse, urljoin
 import requests
 from requests.auth import HTTPDigestAuth, HTTPBasicAuth
 from requests.exceptions import ConnectionError, Timeout, SSLError
@@ -128,7 +130,22 @@ class BaikalClient:
                     # Try to access address book path
                     logger.debug(f"Verifying address book path: {settings['addressBookPath']}")
                     abook_path = settings['addressBookPath'].lstrip('/')
-                    abooks = principal.addressbooks()
+                    
+                    # Get the principal's address books using CardDAV
+                    abooks = []
+                    try:
+                        # First try addressbooks()
+                        abooks = principal.addressbooks()
+                    except AttributeError:
+                        # If that fails, try to get the address book directly
+                        try:
+                            address_url = urljoin(settings['serverUrl'], abook_path)
+                            abook = AddressBook(client=client, url=address_url)
+                            abooks = [abook]
+                        except Exception as e:
+                            logger.error(f"Failed to access address book directly: {str(e)}")
+                            return False, "Failed to access address book"
+                    
                     abook_urls = [str(ab.url) for ab in abooks]
                     logger.debug(f"Available address books: {abook_urls}")
                     
