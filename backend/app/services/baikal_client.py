@@ -188,46 +188,40 @@ class BaikalClient:
             logger.debug(f"Verifying calendar path: {settings['calendarPath']}")
             calendar_path = normalize_url_path(settings['calendarPath'])
             
-            # Get calendar homes first
-            cal_homes = principal.calendar_homes()
-            if not cal_homes:
-                msg = "No calendar homes found on server"
-                logger.error(msg)
-                self.client = None
-                return False, msg
+            # Use the same approach that worked for address books
+            try:
+                # Build the calendar URL using the same base path
+                calendar_url = urljoin(settings['serverUrl'], base_path + calendar_path)
                 
-            # Get all calendars from all homes
-            calendars = []
-            for home in cal_homes:
-                calendars.extend(home.calendars())
-            
-            calendar_urls = [str(cal.url) for cal in calendars]
-            
-            if not calendar_urls:
-                msg = "No calendars found on server. Please create a calendar first."
-                logger.error(msg)
-                self.client = None
-                return False, msg
+                logger.debug(f"Checking calendar URL: {calendar_url}")
+                response = requests.get(calendar_url, auth=auth, verify=verify_ssl)
                 
-            logger.debug(f"Available calendars: {calendar_urls}")
-            
-            # More precise calendar path verification
-            calendar_found = False
-            for cal_url in calendar_urls:
-                cal_path = normalize_url_path(urlparse(cal_url).path)
-                if cal_path == calendar_path or cal_path + '/' == calendar_path or cal_path == calendar_path + '/':
-                    calendar_found = True
-                    break
-            
-            if not calendar_found:
-                msg = f"Calendar path not found: {settings['calendarPath']}"
+                if response.status_code == 404:
+                    msg = f"Calendar not found at: {settings['calendarPath']}"
+                    logger.error(msg)
+                    self.client = None
+                    return False, msg
+                elif response.status_code == 401:
+                    msg = "Authentication failed for calendar access"
+                    logger.error(msg)
+                    self.client = None
+                    return False, msg
+                elif response.status_code >= 400:
+                    msg = f"Error accessing calendar: HTTP {response.status_code}"
+                    logger.error(msg)
+                    self.client = None
+                    return False, msg
+                    
+                logger.debug("Calendar access verified")
+                logger.debug("All paths verified successfully")
+                
+                return True, None
+                
+            except Exception as e:
+                msg = f"Error accessing calendar: {str(e)}"
                 logger.error(msg)
                 self.client = None
                 return False, msg
-            
-            logger.debug("All paths verified successfully")
-            
-            return True, None
                 
         except caldav.lib.error.AuthorizationError as e:
             msg = f"Authentication failed: {str(e)}"
