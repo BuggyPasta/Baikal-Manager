@@ -100,7 +100,7 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async updateSettings(settings) {
-      const response = await axios.post('/api/settings', settings)
+      const response = await axios.post('/api/settings/app', settings)
       this.settings = response.data
       return response.data
     },

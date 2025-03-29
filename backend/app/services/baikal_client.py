@@ -47,13 +47,20 @@ class BaikalClient:
             # Try a basic HTTP(S) connection first
             try:
                 response = requests.get(settings['serverUrl'], timeout=5)
+                content_type = response.headers.get('Content-Type', '').lower()
+                
+                # Log response details
+                print(f"Server Response - Status: {response.status_code}")
+                print(f"Content-Type: {content_type}")
+                print(f"Response Headers: {dict(response.headers)}")
+                print(f"Response Content: {response.text[:200]}...")  # First 200 chars
+                
                 if response.status_code >= 400:
                     return False, f"Server returned error: {response.status_code}"
                 
                 # Check if we're getting a DAV response
-                content_type = response.headers.get('Content-Type', '').lower()
                 if not any(t in content_type for t in ['dav', 'xml', 'text/plain']):
-                    return False, "Server response doesn't appear to be a CalDAV/CardDAV server. Please check the URL and ensure it points to the DAV endpoint (usually ending in dav.php)"
+                    return False, f"Server response doesn't appear to be a CalDAV/CardDAV server (Content-Type: {content_type}). Please check the URL and ensure it points to the DAV endpoint (usually ending in dav.php)"
                 
             except SSLError:
                 return False, "SSL/TLS connection failed. If using local network, ensure URL uses http://"

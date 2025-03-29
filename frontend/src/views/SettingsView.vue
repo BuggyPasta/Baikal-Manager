@@ -171,6 +171,7 @@
                     v-model="appSettings.theme"
                     value="light"
                     class="form-radio"
+                    @change="handleThemeChange"
                   />
                   <span class="ml-2">Light</span>
                 </label>
@@ -180,6 +181,7 @@
                     v-model="appSettings.theme"
                     value="dark"
                     class="form-radio"
+                    @change="handleThemeChange"
                   />
                   <span class="ml-2">Dark</span>
                 </label>
@@ -388,7 +390,8 @@ const testConnection = async () => {
     try {
       data = await response.json()
     } catch (parseError) {
-      errorMessage.value = 'Server returned an invalid response. Please check if the URL points to the correct Baikal DAV endpoint (usually ending in dav.php)'
+      console.error('Raw response:', await response.text())
+      errorMessage.value = 'Server returned an invalid response. Please check if the URL points to the correct Baikal DAV endpoint (usually ending in dav.php). If the issue persists, check the server logs for more details.'
       return
     }
     
@@ -401,7 +404,7 @@ const testConnection = async () => {
         // Keep showing the retry message
         return
       }
-      errorMessage.value = `${data.error}: ${data.details}`
+      errorMessage.value = `${data.error}${data.details ? ': ' + data.details : ''}`
     }
   } catch (error) {
     // Check if the error message contains retry information
@@ -421,6 +424,14 @@ const testConnection = async () => {
 const setLoading = (isLoading, message = '') => {
   document.body.style.cursor = isLoading ? 'wait' : 'default'
   loadingMessage.value = message
+}
+
+// Add handleThemeChange function
+const handleThemeChange = () => {
+  // Update theme immediately
+  document.documentElement.classList.toggle('dark', appSettings.value.theme === 'dark')
+  // Store in localStorage for persistence
+  localStorage.setItem('theme', appSettings.value.theme)
 }
 
 // Load settings on component mount

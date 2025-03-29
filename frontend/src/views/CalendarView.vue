@@ -80,7 +80,7 @@
       </div>
 
       <!-- Error State -->
-      <div v-else-if="error" class="bg-red-50 dark:bg-red-900 p-4 rounded-lg mb-8">
+      <div v-if="error" class="bg-red-50 dark:bg-red-900 p-4 rounded-lg mb-4">
         <p class="text-red-800 dark:text-red-200">{{ error }}</p>
         <button
           @click="fetchEvents"
@@ -268,6 +268,10 @@ import { format, addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, each
 import EventModal from '@/components/EventModal.vue'
 import arrowPrevious from '@/assets/arrow-previous.svg'
 import arrowNext from '@/assets/arrow-next.svg'
+import { useAuthStore } from '@/stores/auth'
+
+// Initialize stores
+const authStore = useAuthStore()
 
 // View options
 const views = ['month', 'week', 'day', 'list']
@@ -413,14 +417,31 @@ async function fetchEvents() {
   loading.value = true
   error.value = null
   try {
-    // TODO: Implement API call to fetch events
-    // For now, using placeholder data
-    events.value = []
+    const response = await fetch('/api/calendar/events', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      const data = await response.json();
+      if (response.status === 401 || response.status === 403) {
+        // Not authenticated or no Baikal credentials - just show empty calendar
+        events.value = [];
+        return;
+      }
+      throw new Error(data.error || 'Failed to fetch events');
+    }
+    
+    const data = await response.json();
+    events.value = data;
   } catch (err) {
-    error.value = 'Failed to load events. Please try again.'
-    console.error('Error fetching events:', err)
+    console.error('Error fetching events:', err);
+    error.value = 'Failed to load events. Calendar will be shown without events.';
+    events.value = [];
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
@@ -456,12 +477,16 @@ async function deleteEvent(eventId) {
 
 // Watch for view/date changes to refresh events
 watch([currentView, currentDate], () => {
-  fetchEvents()
+  if (authStore.serverSettings) {
+    fetchEvents()
+  }
 })
 
-// Initial load
+// Initial load - only fetch if we have server settings
 onMounted(() => {
-  fetchEvents()
+  if (authStore.serverSettings) {
+    fetchEvents()
+  }
 })
 
 // Format event date and time for list view
