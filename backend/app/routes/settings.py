@@ -100,6 +100,8 @@ def verify_baikal_connection():
     
     try:
         success, error_message = baikal_client.verify_connection(data)
+        logger.debug(f"Verification result - Success: {success}, Error: {error_message}")
+        
         if success:
             logger.debug("Connection verification successful")
             return jsonify({'message': 'Connection successful'})
@@ -109,6 +111,12 @@ def verify_baikal_connection():
                 'error': 'Connection verification failed',
                 'details': error_message
             }), 400
+    except ConnectionError as e:
+        logger.error(f"Connection error during verification: {str(e)}")
+        return jsonify({
+            'error': 'Connection error',
+            'details': str(e)
+        }), 400
     except Exception as e:
         logger.exception("Unexpected error during verification")
         return jsonify({

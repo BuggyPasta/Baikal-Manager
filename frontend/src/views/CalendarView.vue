@@ -77,12 +77,12 @@
         </div>
       </div>
 
-      <!-- Loading State -->
-      <div v-if="loading" class="flex justify-center items-center h-96">
+      <!-- Loading Overlay (not full screen) -->
+      <div v-if="loading" class="absolute inset-0 bg-white/50 dark:bg-gray-800/50 flex justify-center items-center z-50">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
 
-      <!-- Error State -->
+      <!-- Error Message (as a banner, not blocking content) -->
       <div v-if="error" class="bg-red-50 dark:bg-red-900 p-4 rounded-lg mb-4">
         <p class="text-red-800 dark:text-red-200">{{ error }}</p>
         <button
@@ -93,8 +93,8 @@
         </button>
       </div>
 
-      <!-- Calendar Grid -->
-      <div v-if="!loading && !error" class="bg-white dark:bg-gray-800 rounded-lg shadow">
+      <!-- Calendar Grid (always shown) -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
         <!-- Month View -->
         <div v-if="currentView === 'month'" class="grid grid-cols-7 gap-0 border border-gray-200 dark:border-gray-700">
           <!-- Days of week header -->
@@ -485,10 +485,12 @@ watch([currentView, currentDate], () => {
   }
 })
 
-// Initial load - always show calendar structure
+// Initialize calendar immediately
 onMounted(() => {
-  // Initialize with empty events if no server settings
+  // Always initialize with empty events
   events.value = []
+  
+  // Only fetch events if we have server settings
   if (authStore.serverSettings) {
     fetchEvents()
   }

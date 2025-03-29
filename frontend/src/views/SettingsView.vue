@@ -303,50 +303,58 @@ const saveServerSettings = async () => {
     
     let verifyData
     try {
-      verifyData = await verifyResponse.json()
-      console.log('Server response:', verifyData)
-    } catch (parseError) {
-      console.error('Failed to parse server response:', parseError)
-      errorMessage.value = 'Server returned an invalid response. Please check if the URL points to the correct Baikal DAV endpoint (usually ending in dav.php)'
+      const responseText = await verifyResponse.text()
+      console.log('Raw server response:', responseText)
+      try {
+        verifyData = JSON.parse(responseText)
+        console.log('Parsed server response:', verifyData)
+      } catch (parseError) {
+        console.error('Failed to parse server response:', parseError)
+        console.error('Raw response:', responseText)
+        errorMessage.value = 'Server returned an invalid response. Please check the server logs for more details.'
+        return
+      }
+    } catch (error) {
+      console.error('Failed to read server response:', error)
+      errorMessage.value = 'Failed to read server response'
       return
     }
     
     if (!verifyResponse.ok) {
-      // Check if the error message contains retry information
-      if (verifyData.details?.includes('Attempt')) {
-        setLoading(true, verifyData.details)
-        // Keep showing the retry message
-        return
-      }
-      errorMessage.value = `${verifyData.error}: ${verifyData.details}`
+      errorMessage.value = verifyData.details || verifyData.error || 'Connection verification failed'
       return
     }
     
     setLoading(true, 'Saving settings...')
     // If verification passed, save the settings
-    await authStore.updateServerSettings({
-      serverUrl: serverSettings.value.baikalUrl,
-      username: serverSettings.value.username,
-      password: serverSettings.value.password,
-      addressBookPath: serverSettings.value.addressBookPath,
-      calendarPath: serverSettings.value.calendarPath,
-      authType: serverSettings.value.authType
+    const saveResponse = await fetch('/api/settings/baikal', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        serverUrl: serverSettings.value.baikalUrl,
+        username: serverSettings.value.username,
+        password: serverSettings.value.password,
+        addressBookPath: serverSettings.value.addressBookPath,
+        calendarPath: serverSettings.value.calendarPath,
+        authType: serverSettings.value.authType
+      })
     })
     
-    showSuccess('Server settings saved successfully')
-  } catch (error) {
-    console.error('Error saving server settings:', error)
-    // Check if the error message contains retry information
-    if (error.message?.includes('Attempt')) {
-      setLoading(true, error.message)
-      // Keep showing the retry message
+    if (!saveResponse.ok) {
+      const saveData = await saveResponse.json()
+      errorMessage.value = saveData.error || 'Failed to save settings'
       return
     }
-    errorMessage.value = error.response?.data?.details || error.message || 'An unexpected error occurred'
+    
+    showSuccess('Settings saved successfully')
+    await authStore.loadSettings()
+  } catch (error) {
+    console.error('Error saving settings:', error)
+    errorMessage.value = error.message || 'Failed to save settings'
   } finally {
-    if (!loadingMessage.value?.includes('Attempt')) {
-      setLoading(false)
-    }
+    setLoading(false)
   }
 }
 
