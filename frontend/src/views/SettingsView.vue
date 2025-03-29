@@ -12,9 +12,9 @@
       {{ errorMessage }}
     </div>
 
-    <div class="grid gap-6">
+    <div class="settings-container">
       <!-- Server Settings -->
-      <div class="card">
+      <div class="settings-card">
         <h2 class="text-xl font-semibold mb-4">Server Settings</h2>
         <form @submit.prevent="saveServerSettings" class="space-y-4">
           <div class="form-group">
@@ -100,83 +100,85 @@
         </form>
       </div>
 
-      <!-- User Settings -->
-      <div class="card">
-        <h2 class="text-xl font-semibold mb-4">User Settings</h2>
-        <form @submit.prevent="saveUserSettings" class="space-y-4">
-          <div class="form-group">
-            <label for="username" class="label">Username</label>
-            <input
-              id="username"
-              v-model="userSettings.username"
-              type="text"
-              class="input"
-              required
-            />
-          </div>
-          
-          <div class="form-group">
-            <label for="password" class="label">Password</label>
-            <input
-              id="password"
-              v-model="userSettings.password"
-              type="password"
-              class="input"
-              placeholder="Enter new password"
-            />
-            <p class="form-hint">Leave empty to keep current password</p>
-          </div>
-          
-          <button type="submit" class="btn-primary">
-            Save User Settings
-          </button>
-        </form>
-      </div>
-
-      <!-- App Settings -->
-      <div class="card">
-        <h2 class="text-xl font-semibold mb-4">Application Settings</h2>
-        <form @submit.prevent="saveAppSettings" class="space-y-4">
-          <div class="form-group">
-            <label class="label">Theme</label>
-            <div class="flex space-x-4">
-              <label class="inline-flex items-center">
-                <input
-                  type="radio"
-                  v-model="appSettings.theme"
-                  value="light"
-                  class="form-radio"
-                />
-                <span class="ml-2">Light</span>
-              </label>
-              <label class="inline-flex items-center">
-                <input
-                  type="radio"
-                  v-model="appSettings.theme"
-                  value="dark"
-                  class="form-radio"
-                />
-                <span class="ml-2">Dark</span>
-              </label>
+      <div class="space-y-6">
+        <!-- User Settings -->
+        <div class="settings-card">
+          <h2 class="text-xl font-semibold mb-4">User Settings</h2>
+          <form @submit.prevent="saveUserSettings" class="space-y-4">
+            <div class="form-group">
+              <label for="username" class="label">Username</label>
+              <input
+                id="username"
+                v-model="userSettings.username"
+                type="text"
+                class="input"
+                required
+              />
             </div>
-          </div>
-          
-          <div class="form-group">
-            <label for="timeout" class="label">Auto Logout Timeout (minutes)</label>
-            <input
-              id="timeout"
-              v-model.number="appSettings.timeout"
-              type="number"
-              min="1"
-              class="input"
-              required
-            />
-          </div>
-          
-          <button type="submit" class="btn-primary">
-            Save App Settings
-          </button>
-        </form>
+            
+            <div class="form-group">
+              <label for="password" class="label">Password</label>
+              <input
+                id="password"
+                v-model="userSettings.password"
+                type="password"
+                class="input"
+                placeholder="Enter new password"
+              />
+              <p class="form-hint">Leave empty to keep current password</p>
+            </div>
+            
+            <button type="submit" class="btn-primary">
+              Save User Settings
+            </button>
+          </form>
+        </div>
+
+        <!-- App Settings -->
+        <div class="settings-card">
+          <h2 class="text-xl font-semibold mb-4">Application Settings</h2>
+          <form @submit.prevent="saveAppSettings" class="space-y-4">
+            <div class="form-group">
+              <label class="label">Theme</label>
+              <div class="flex space-x-4">
+                <label class="inline-flex items-center">
+                  <input
+                    type="radio"
+                    v-model="appSettings.theme"
+                    value="light"
+                    class="form-radio"
+                  />
+                  <span class="ml-2">Light</span>
+                </label>
+                <label class="inline-flex items-center">
+                  <input
+                    type="radio"
+                    v-model="appSettings.theme"
+                    value="dark"
+                    class="form-radio"
+                  />
+                  <span class="ml-2">Dark</span>
+                </label>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="timeout" class="label">Auto Logout Timeout (minutes)</label>
+              <input
+                id="timeout"
+                v-model.number="appSettings.timeout"
+                type="number"
+                min="1"
+                class="input"
+                required
+              />
+            </div>
+            
+            <button type="submit" class="btn-primary">
+              Save App Settings
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   </div>

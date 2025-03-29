@@ -126,36 +126,29 @@
     @apply h-6 flex items-center border-l-4;
   }
 
+  /* Calendar Grid */
   .calendar-grid {
-    @apply grid gap-0 border-2 border-gray-300 dark:border-gray-600;
+    @apply grid border-2 border-gray-300 dark:border-gray-600;
   }
 
   .calendar-cell {
-    @apply min-h-[100px] bg-white dark:bg-gray-800 p-2 
-           border border-gray-300 dark:border-gray-600;
+    @apply p-2 border border-gray-300 dark:border-gray-600 min-h-[100px];
   }
 
   .calendar-cell-today {
-    @apply bg-primary-50 dark:bg-primary-900/20 
-           border-2 border-primary-500;
+    @apply bg-blue-50 dark:bg-blue-900/20;
   }
 
   .calendar-header-cell {
-    @apply p-2 text-center text-sm font-medium 
-           text-gray-700 dark:text-gray-300 
-           bg-gray-100 dark:bg-gray-700
-           border border-gray-300 dark:border-gray-600;
+    @apply p-2 text-center font-semibold border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800;
   }
 
   .calendar-week-cell {
-    @apply min-h-[60px] bg-white dark:bg-gray-800 p-2 
-           border border-gray-300 dark:border-gray-600;
+    @apply p-2 text-center border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800;
   }
 
   .calendar-time-cell {
-    @apply h-[30px] border-b border-gray-200 dark:border-gray-700 
-           text-xs text-gray-500 dark:text-gray-400 
-           px-2 relative;
+    @apply p-2 text-right border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800;
   }
 
   /* Modal styles */
@@ -218,4 +211,13 @@
 /* Dark mode toggle */
 .dark-mode-toggle {
   @apply p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200;
+}
+
+/* Settings Page Layout */
+.settings-container {
+  @apply grid grid-cols-1 md:grid-cols-2 gap-6;
+}
+
+.settings-card {
+  @apply bg-white dark:bg-gray-800 rounded-lg shadow-md p-6;
 } 

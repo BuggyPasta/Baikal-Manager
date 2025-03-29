@@ -27,6 +27,9 @@
               class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white"
               placeholder="Full Name"
             >
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              This is the name that will be displayed in the application
+            </p>
           </div>
           <div>
             <label for="username" class="sr-only">Username</label>
@@ -39,9 +42,6 @@
               class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white"
               placeholder="Username (no spaces allowed)"
             >
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Tip: Use your Baikal server username to automatically find your calendars and contacts
-            </p>
           </div>
           <div>
             <label for="password" class="sr-only">Password</label>

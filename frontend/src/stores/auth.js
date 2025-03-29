@@ -65,8 +65,55 @@ export const useAuthStore = defineStore('auth', () => {
       if (user.value) {
         startActivityMonitor()
       }
+      return !!user.value
     } catch (err) {
       user.value = null
+      return false
+    }
+  }
+
+  // Settings management
+  async function getSettings() {
+    try {
+      const [baikalResponse, appResponse] = await Promise.all([
+        axios.get('/api/settings/baikal'),
+        axios.get('/api/settings/app')
+      ])
+      
+      return {
+        ...baikalResponse.data,
+        ...appResponse.data
+      }
+    } catch (err) {
+      throw new Error(err.response?.data?.error || 'Failed to load settings')
+    }
+  }
+
+  async function updateSettings(settings) {
+    try {
+      if ('baikalUrl' in settings) {
+        await axios.post('/api/settings/baikal', {
+          serverUrl: settings.baikalUrl,
+          username: settings.username,
+          password: settings.password,
+          addressBookPath: settings.addressBookPath,
+          calendarPath: settings.calendarPath,
+          authType: settings.authType
+        })
+      } else if ('theme' in settings || 'timeout' in settings) {
+        await axios.post('/api/settings/app', {
+          theme: settings.theme,
+          autoLogoutMinutes: settings.timeout
+        })
+        if (settings.timeout) {
+          setInactivityTimeout(settings.timeout)
+        }
+        if (settings.theme) {
+          document.documentElement.classList.toggle('dark', settings.theme === 'dark')
+        }
+      }
+    } catch (err) {
+      throw new Error(err.response?.data?.error || 'Failed to save settings')
     }
   }
 
@@ -125,6 +172,8 @@ export const useAuthStore = defineStore('auth', () => {
     register,
     logout,
     checkAuth,
+    getSettings,
+    updateSettings,
     setInactivityTimeout,
     updateLastActivity
   }

@@ -37,10 +37,6 @@ A web-based, self-hosted app for managing Baikal CalDAV/CardDAV contacts and cal
    # This directory will be created automatically if it doesn't exist
    HOST_DATA_DIR=/path/to/your/data/directory
 
-   # The URL of your Baikal server
-   # Example: http://192.168.1.100:5232 or https://dav.yourdomain.com
-   BAIKAL_URL=http://your-baikal-server:5232
-
    # A secure key for session encryption
    # Use a random string of 32 characters or more
    APP_SECRET_KEY=generate_a_secure_key
@@ -51,6 +47,7 @@ A web-based, self-hosted app for managing Baikal CalDAV/CardDAV contacts and cal
 
    # Authentication type for Baikal server
    # Values: 'basic' or 'digest'
+   # Note: This is the default auth type. Users can change it in settings.
    BAIKAL_AUTH_TYPE=basic
 
    # Application name displayed in the UI
@@ -94,17 +91,7 @@ A web-based, self-hosted app for managing Baikal CalDAV/CardDAV contacts and cal
    python -c "import secrets; print(secrets.token_hex(32))"
    ```
 
-   Sample settings for accessing your Baikal server calendars and contacts:
-   ```
-   If you connect to your calendars/contacts using URLs like:
-   http://192.168.111.111:5232/dav.php/addressbooks/user/default/
-   http://192.168.111.111:5232/dav.php/calendars/user/default/
-
-   Then your BAIKAL_URL should be:
-   BAIKAL_URL=http://192.168.111.111:5232/dav.php
-
-   The application will handle the specific paths for calendars and contacts automatically.
-   ```
+   Note: Baikal server connection settings (URL, username, password) are configured through the application's user interface after installation. Each user can configure their own connection settings.
 
 3. Create a `docker-compose.yml` file:
    ```yaml
@@ -172,7 +159,7 @@ Security Features:
 - Secure password hashing
 - HTTPS support (when configured)
 - Container security features:
-  * Minimal required capabilities only (CHOWN, DAC_OVERRIDE, FOWNER, NET_BIND_SERVICE)
+  * Minimal required capabilities only (NET_BIND_SERVICE)
   * Non-root user execution
   * Restricted file system access
 
@@ -180,7 +167,7 @@ Security Features:
 
 1. Create a user account with your name and credentials
 2. Configure your Baikal server connection in Settings:
-   - Enter your Baikal server URL
+   - Enter your Baikal server URL (e.g., http://192.168.1.100:5232/dav.php)
    - Provide your Baikal username and password
    - Test the connection before saving
 3. Configure application settings:

@@ -163,10 +163,10 @@
         <div class="calendar-header-cell"></div>
         <div
           v-for="day in weekDays"
-          :key="day"
+          :key="format(day, 'yyyy-MM-dd')"
           class="calendar-header-cell"
         >
-          {{ format(day, 'EEEE, d MMMM yyyy') }}
+          {{ format(day, 'EEE, MMM d') }}
         </div>
 
         <!-- Time slots -->
@@ -174,10 +174,10 @@
           <div class="calendar-time-cell">
             {{ formatHour(hour - 1) }}
           </div>
-          <template v-for="day in weekDays" :key="`${hour}-${day}`">
-            <div class="calendar-week-cell">
+          <template v-for="day in weekDays" :key="`${hour}-${format(day, 'yyyy-MM-dd')}`">
+            <div class="calendar-week-cell relative">
               <!-- First 30 minutes -->
-              <div class="h-[30px] relative">
+              <div class="h-[30px] relative border-b border-gray-100 dark:border-gray-700">
                 <div
                   v-for="event in getEventsForTimeSlot(day, hour - 1, 0)"
                   :key="event.id"
@@ -190,7 +190,7 @@
                 </div>
               </div>
               <!-- Second 30 minutes -->
-              <div class="h-[30px] relative border-t border-gray-100 dark:border-gray-700">
+              <div class="h-[30px] relative">
                 <div
                   v-for="event in getEventsForTimeSlot(day, hour - 1, 30)"
                   :key="event.id"
@@ -208,45 +208,47 @@
       </div>
 
       <!-- Day View -->
-      <div v-else-if="currentView === 'day'" class="calendar-grid grid-cols-1">
+      <div v-else-if="currentView === 'day'" class="calendar-grid grid-cols-2">
+        <!-- Header -->
+        <div class="calendar-header-cell">Time</div>
         <div class="calendar-header-cell">
-          {{ format(currentDate, 'EEEE, d MMMM yyyy') }}
+          {{ format(currentDate, 'EEEE, MMM d') }}
         </div>
-        <div class="relative">
-          <template v-for="hour in 24" :key="hour">
-            <!-- First 30 minutes -->
-            <div class="calendar-time-cell">
-              {{ formatHour(hour - 1) }}
-              <div class="absolute inset-x-16 h-[30px]">
-                <div
-                  v-for="event in getEventsForTimeSlot(currentDate, hour - 1, 0)"
-                  :key="event.id"
-                  @click="openEventModal(event)"
-                  class="absolute inset-x-1 rounded-md px-2 py-1 text-sm cursor-pointer overflow-hidden"
-                  :class="getEventClasses(event)"
-                  :style="getEventStyles(event)"
-                >
-                  {{ event.title }}
-                </div>
+
+        <!-- Time slots -->
+        <template v-for="hour in 24" :key="hour">
+          <!-- First 30 minutes -->
+          <div class="calendar-time-cell">
+            {{ formatHour(hour - 1) }}
+          </div>
+          <div class="calendar-week-cell relative">
+            <div class="h-[30px] relative border-b border-gray-100 dark:border-gray-700">
+              <div
+                v-for="event in getEventsForTimeSlot(currentDate, hour - 1, 0)"
+                :key="event.id"
+                @click="openEventModal(event)"
+                class="absolute inset-x-1 rounded-md px-2 py-1 text-sm cursor-pointer overflow-hidden"
+                :class="getEventClasses(event)"
+                :style="getEventStyles(event)"
+              >
+                {{ event.title }}
               </div>
             </div>
             <!-- Second 30 minutes -->
-            <div class="calendar-time-cell border-l-0">
-              <div class="absolute inset-x-16 h-[30px]">
-                <div
-                  v-for="event in getEventsForTimeSlot(currentDate, hour - 1, 30)"
-                  :key="event.id"
-                  @click="openEventModal(event)"
-                  class="absolute inset-x-1 rounded-md px-2 py-1 text-sm cursor-pointer overflow-hidden"
-                  :class="getEventClasses(event)"
-                  :style="getEventStyles(event)"
-                >
-                  {{ event.title }}
-                </div>
+            <div class="h-[30px] relative">
+              <div
+                v-for="event in getEventsForTimeSlot(currentDate, hour - 1, 30)"
+                :key="event.id"
+                @click="openEventModal(event)"
+                class="absolute inset-x-1 rounded-md px-2 py-1 text-sm cursor-pointer overflow-hidden"
+                :class="getEventClasses(event)"
+                :style="getEventStyles(event)"
+              >
+                {{ event.title }}
               </div>
             </div>
-          </template>
-        </div>
+          </div>
+        </template>
       </div>
     </div>
 
@@ -290,8 +292,24 @@ const showEventModal = ref(false)
 const selectedEvent = ref(null)
 const selectedDate = ref(null)
 
-// Week days array
-const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+// Week days array for headers
+const weekDays = computed(() => {
+  const start = startOfWeek(currentDate.value)
+  return Array.from({ length: 7 }, (_, i) => addDays(start, i))
+})
+
+// Current period label
+const currentPeriodLabel = computed(() => {
+  if (currentView.value === 'month') {
+    return format(currentDate.value, 'MMMM yyyy')
+  } else if (currentView.value === 'week') {
+    const start = startOfWeek(currentDate.value)
+    const end = endOfWeek(currentDate.value)
+    return `${format(start, 'MMM d')} - ${format(end, 'MMM d, yyyy')}`
+  } else {
+    return format(currentDate.value, 'EEEE, MMMM d, yyyy')
+  }
+})
 
 // Computed properties
 const formatDateRange = computed(() => {
@@ -478,16 +496,45 @@ const sortedEvents = computed(() => {
   })
 })
 
+// Navigation methods
+function goToToday() {
+  currentDate.value = new Date()
+}
+
+function previousPeriod() {
+  if (currentView.value === 'month') {
+    currentDate.value = new Date(currentDate.value.setMonth(currentDate.value.getMonth() - 1))
+  } else if (currentView.value === 'week') {
+    currentDate.value = addDays(currentDate.value, -7)
+  } else {
+    currentDate.value = addDays(currentDate.value, -1)
+  }
+}
+
+function nextPeriod() {
+  if (currentView.value === 'month') {
+    currentDate.value = new Date(currentDate.value.setMonth(currentDate.value.getMonth() + 1))
+  } else if (currentView.value === 'week') {
+    currentDate.value = addDays(currentDate.value, 7)
+  } else {
+    currentDate.value = addDays(currentDate.value, 1)
+  }
+}
+
 // Helper functions for events
 function getEventsForTimeSlot(date, hour, minute) {
+  const slotStart = setMinutes(setHours(new Date(date), hour), minute)
+  const slotEnd = addMinutes(slotStart, 30)
+  
   return events.value.filter(event => {
-    const start = parseISO(event.start)
-    const end = parseISO(event.end)
-    const slotStart = setMinutes(setHours(date, hour), minute)
-    const slotEnd = addMinutes(slotStart, 30)
-    return isWithinInterval(start, { start: slotStart, end: slotEnd }) ||
-           isWithinInterval(end, { start: slotStart, end: slotEnd }) ||
-           (isBefore(start, slotStart) && isAfter(end, slotEnd))
+    const eventStart = new Date(event.start)
+    const eventEnd = new Date(event.end)
+    
+    return (
+      isWithinInterval(slotStart, { start: eventStart, end: eventEnd }) ||
+      isWithinInterval(slotEnd, { start: eventStart, end: eventEnd }) ||
+      (isBefore(eventStart, slotStart) && isAfter(eventEnd, slotEnd))
+    )
   })
 }
 
@@ -501,14 +548,15 @@ function getEventClasses(event) {
 }
 
 function getEventStyles(event) {
-  const start = parseISO(event.start)
-  const end = parseISO(event.end)
+  const start = new Date(event.start)
+  const end = new Date(event.end)
   const duration = differenceInMinutes(end, start)
-  const height = `${Math.min(duration * 2, 100)}%`
-  const top = `${getMinutesFromMidnight(start) * 2}%`
+  const top = `${(start.getHours() * 60 + start.getMinutes()) * (100/1440)}%` // percentage through the day
+  const height = `${Math.min(duration * (100/1440), 100)}%` // percentage of day, max 100%
+  
   return {
-    height,
     top,
+    height,
     zIndex: duration > 30 ? 10 : 1
   }
 }

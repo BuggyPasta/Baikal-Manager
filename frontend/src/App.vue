@@ -84,54 +84,71 @@ const themeIcon = computed(() =>
   isDarkMode.value ? modeLightIcon : modeDarkIcon
 )
 
-// Initialize theme from environment variable or localStorage
-onMounted(() => {
-  const savedTheme = localStorage.getItem('theme')
-  const defaultMode = import.meta.env.VITE_DEFAULT_MODE || 'light'
-  
-  if (savedTheme) {
-    isDarkMode.value = savedTheme === 'dark'
-  } else {
-    isDarkMode.value = defaultMode === 'dark'
+// Initialize theme
+onMounted(async () => {
+  if (isAuthenticated.value) {
+    try {
+      const settings = await authStore.getSettings()
+      isDarkMode.value = settings.theme === 'dark'
+      document.documentElement.classList.toggle('dark', isDarkMode.value)
+    } catch (error) {
+      console.error('Failed to load theme setting:', error)
+    }
   }
-  
-  // Apply theme to document
-  document.documentElement.classList.toggle('dark', isDarkMode.value)
 })
 
-function toggleTheme() {
+async function toggleTheme() {
   isDarkMode.value = !isDarkMode.value
-  document.documentElement.classList.toggle('dark')
-  localStorage.setItem('theme', isDarkMode.value ? 'dark' : 'light')
+  document.documentElement.classList.toggle('dark', isDarkMode.value)
+  if (isAuthenticated.value) {
+    try {
+      await authStore.updateSettings({ theme: isDarkMode.value ? 'dark' : 'light' })
+    } catch (error) {
+      console.error('Failed to save theme setting:', error)
+    }
+  }
 }
 
 function toggleMobileMenu() {
   isMobileMenuOpen.value = !isMobileMenuOpen.value
 }
 
-// Add logout function
 async function logout() {
-  try {
-    await authStore.logout()
-    router.push('/login')
-  } catch (error) {
-    console.error('Logout failed:', error)
-  }
+  await authStore.logout()
+  router.push('/login')
 }
 </script>
 
 <style>
+:root {
+  --primary-color: #3b82f6;
+  --primary-hover: #2563eb;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+/* Navigation Links */
 .nav-link {
-  @apply px-3 py-2 rounded-md text-sm font-medium;
-  @apply text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white;
+  @apply px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors;
 }
 
+.nav-link.router-link-active {
+  @apply text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50;
+}
+
+/* Mobile Navigation */
 .mobile-nav-link {
-  @apply block px-3 py-2 rounded-md text-base font-medium;
-  @apply text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white;
+  @apply block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors;
 }
 
+.mobile-nav-link.router-link-active {
+  @apply text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50;
+}
+
+/* Theme Toggle Button */
 .theme-toggle {
-  @apply p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700;
+  @apply p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors;
 }
 </style> 
