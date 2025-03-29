@@ -146,43 +146,30 @@ class BaikalClient:
             # Verify address book path first (simpler check)
             logger.debug(f"Verifying address book path: {settings['addressBookPath']}")
             abook_path = normalize_url_path(settings['addressBookPath'])
-            address_url = urljoin(settings['serverUrl'], abook_path)
             
-            # Use the same auth and SSL settings for address book verification
-            try:
-                # Baikal requires PROPFIND for CardDAV resources
-                response = requests.request(
-                    'PROPFIND',
-                    address_url,
-                    auth=auth,
-                    verify=verify_ssl,
-                    headers={'Depth': '0'},
-                    timeout=10
-                )
-                
-                if response.status_code in [401, 403]:
-                    msg = "Authentication failed for address book"
-                    logger.error(msg)
-                    self.client = None
-                    return False, msg
-                elif response.status_code == 404:
-                    msg = f"Address book not found at: {settings['addressBookPath']}"
-                    logger.error(msg)
-                    self.client = None
-                    return False, msg
-                elif response.status_code not in [200, 207]:  # 207 is Multi-Status success for Baikal
-                    msg = f"Error accessing address book: HTTP {response.status_code}"
-                    logger.error(msg)
-                    self.client = None
-                    return False, msg
-                    
-                logger.debug("Address book access verified")
-                
-            except requests.exceptions.RequestException as e:
-                msg = f"Failed to access address book: {str(e)}"
+            # Get all addressbooks and verify the path exists
+            addressbooks = principal.addressbooks()
+            if not addressbooks:
+                msg = "No address books found on server"
                 logger.error(msg)
                 self.client = None
                 return False, msg
+                
+            # Check if the requested path exists
+            abook_found = False
+            for book in addressbooks:
+                book_path = normalize_url_path(urlparse(str(book.url)).path)
+                if book_path == abook_path or book_path + '/' == abook_path or book_path == abook_path + '/':
+                    abook_found = True
+                    break
+                    
+            if not abook_found:
+                msg = f"Address book not found at: {settings['addressBookPath']}"
+                logger.error(msg)
+                self.client = None
+                return False, msg
+                
+            logger.debug("Address book access verified")
             
             # Now verify calendar path
             logger.debug(f"Verifying calendar path: {settings['calendarPath']}")
