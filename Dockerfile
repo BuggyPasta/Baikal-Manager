@@ -30,6 +30,7 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     python3-dev \
     curl \
+    gosu \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /data/logs /data/users /app/backend/app/static
@@ -46,16 +47,35 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/ .
 
 # Create non-root user and set permissions
-RUN useradd -m appuser && \
+RUN useradd -m -u 1000 appuser && \
     chown -R appuser:appuser /app /data && \
-    chmod -R 755 /data/logs /data/users /app/backend/app/static
+    chmod -R 755 /data && \
+    chmod -R 755 /app/backend/app/static
 
-# Switch to non-root user
-USER appuser
+# Create entrypoint script
+COPY <<'EOF' /usr/local/bin/docker-entrypoint.sh
+#!/bin/bash
+set -e
+
+# Create required directories
+mkdir -p /data/logs /data/users
+
+# Fix permissions at runtime
+chown -R appuser:appuser /data
+chmod -R 755 /data
+
+# Switch to appuser and run the application
+exec gosu appuser "$@"
+EOF
+
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:3000/health || exit 1
+
+# Set entrypoint
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
 # Run gunicorn for production
 CMD ["gunicorn", "--bind", "0.0.0.0:3000", "--workers", "4", "--timeout", "120", "app:create_app()"] 
