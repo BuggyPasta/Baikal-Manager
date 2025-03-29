@@ -44,7 +44,10 @@
     <div class="calendar-content">
       <!-- List View -->
       <div v-if="currentView === 'list'" class="bg-white dark:bg-gray-800 rounded-lg shadow">
-        <div class="divide-y divide-gray-200 dark:divide-gray-700">
+        <div v-if="events.length === 0" class="p-4 text-center text-gray-500 dark:text-gray-400">
+          No events to display
+        </div>
+        <div v-else class="divide-y divide-gray-200 dark:divide-gray-700">
           <div
             v-for="event in sortedEvents"
             :key="event.id"
@@ -91,7 +94,7 @@
       </div>
 
       <!-- Calendar Grid -->
-      <div v-else class="bg-white dark:bg-gray-800 rounded-lg shadow">
+      <div v-if="!loading && !error" class="bg-white dark:bg-gray-800 rounded-lg shadow">
         <!-- Month View -->
         <div v-if="currentView === 'month'" class="grid grid-cols-7 gap-0 border border-gray-200 dark:border-gray-700">
           <!-- Days of week header -->
@@ -482,8 +485,10 @@ watch([currentView, currentDate], () => {
   }
 })
 
-// Initial load - only fetch if we have server settings
+// Initial load - always show calendar structure
 onMounted(() => {
+  // Initialize with empty events if no server settings
+  events.value = []
   if (authStore.serverSettings) {
     fetchEvents()
   }

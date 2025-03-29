@@ -6,6 +6,18 @@ import caldav
 import os
 import json
 from datetime import datetime, timedelta
+import logging
+
+# Configure logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+# Create a file handler
+handler = logging.FileHandler('/data/logs/settings.log')
+handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 bp = Blueprint('settings', __name__, url_prefix='/api/settings')
 baikal_client = BaikalClient()
@@ -76,17 +88,33 @@ def save_baikal_settings():
 @bp.route('/baikal/verify', methods=['POST'])
 def verify_baikal_connection():
     """Endpoint for explicitly testing the connection"""
+    logger.debug("Received verification request")
+    
     if not (data := request.get_json()):
+        logger.error("No settings data provided")
         return jsonify({'error': 'No settings provided'}), 400
     
-    success, error_message = baikal_client.verify_connection(data)
-    if success:
-        return jsonify({'message': 'Connection successful'})
-    else:
+    # Log the request data (excluding password)
+    safe_data = {k: v for k, v in data.items() if k != 'password'}
+    logger.debug(f"Verifying connection with settings: {safe_data}")
+    
+    try:
+        success, error_message = baikal_client.verify_connection(data)
+        if success:
+            logger.debug("Connection verification successful")
+            return jsonify({'message': 'Connection successful'})
+        else:
+            logger.error(f"Connection verification failed: {error_message}")
+            return jsonify({
+                'error': 'Connection verification failed',
+                'details': error_message
+            }), 400
+    except Exception as e:
+        logger.exception("Unexpected error during verification")
         return jsonify({
-            'error': 'Connection verification failed',
-            'details': error_message
-        }), 400
+            'error': 'Verification error',
+            'details': str(e)
+        }), 500
 
 @bp.route('/test-baikal', methods=['POST'])
 def test_baikal_connection():

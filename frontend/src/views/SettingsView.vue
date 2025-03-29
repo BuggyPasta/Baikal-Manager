@@ -281,6 +281,10 @@ const saveServerSettings = async () => {
   try {
     setLoading(true, 'Verifying connection...')
     errorMessage.value = ''
+    console.log('Attempting to verify connection with settings:', {
+      ...serverSettings.value,
+      password: '[REDACTED]'
+    })
     
     const verifyResponse = await fetch('/api/baikal/verify', {
       method: 'POST',
@@ -292,14 +296,17 @@ const saveServerSettings = async () => {
         username: serverSettings.value.username,
         password: serverSettings.value.password,
         addressBookPath: serverSettings.value.addressBookPath,
-        calendarPath: serverSettings.value.calendarPath
+        calendarPath: serverSettings.value.calendarPath,
+        authType: serverSettings.value.authType
       })
     })
     
     let verifyData
     try {
       verifyData = await verifyResponse.json()
+      console.log('Server response:', verifyData)
     } catch (parseError) {
+      console.error('Failed to parse server response:', parseError)
       errorMessage.value = 'Server returned an invalid response. Please check if the URL points to the correct Baikal DAV endpoint (usually ending in dav.php)'
       return
     }
@@ -322,11 +329,13 @@ const saveServerSettings = async () => {
       username: serverSettings.value.username,
       password: serverSettings.value.password,
       addressBookPath: serverSettings.value.addressBookPath,
-      calendarPath: serverSettings.value.calendarPath
+      calendarPath: serverSettings.value.calendarPath,
+      authType: serverSettings.value.authType
     })
     
     showSuccess('Server settings saved successfully')
   } catch (error) {
+    console.error('Error saving server settings:', error)
     // Check if the error message contains retry information
     if (error.message?.includes('Attempt')) {
       setLoading(true, error.message)
