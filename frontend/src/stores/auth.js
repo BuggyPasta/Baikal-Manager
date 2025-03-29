@@ -109,6 +109,8 @@ export const useAuthStore = defineStore('auth', {
       const response = await axios.post('/api/settings/baikal', settings)
       this.serverSettings = response.data
       localStorage.setItem('serverSettings', JSON.stringify(this.serverSettings))
+      // Reload settings to ensure we have the latest state
+      await this.getSettings()
       return response.data
     },
 

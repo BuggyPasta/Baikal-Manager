@@ -203,6 +203,9 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import ContactModal from '@/components/ContactModal.vue'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
 
 // State
 const contacts = ref([])
@@ -249,6 +252,12 @@ async function fetchContacts() {
   loading.value = true
   error.value = null
   try {
+    // Check if we have valid server settings
+    if (!authStore.serverSettings?.serverUrl) {
+      error.value = 'Server settings not configured. Please configure Baikal settings first.'
+      return
+    }
+    
     const response = await fetch('/api/contacts')
     if (!response.ok) throw new Error('Failed to fetch contacts')
     contacts.value = await response.json()
@@ -381,9 +390,23 @@ watch([searchQuery, selectedAddressBook], () => {
 
 // Initial load
 onMounted(async () => {
-  await Promise.all([
-    fetchContacts(),
-    fetchAddressBooks()
-  ])
+  try {
+    // First ensure we have settings loaded
+    await authStore.getSettings()
+    
+    // Then check if we have valid server settings
+    if (!authStore.serverSettings?.serverUrl) {
+      error.value = 'Server settings not configured. Please configure Baikal settings first.'
+      return
+    }
+    
+    await Promise.all([
+      fetchContacts(),
+      fetchAddressBooks()
+    ])
+  } catch (err) {
+    error.value = 'Failed to load settings. Please try again.'
+    console.error('Error loading settings:', err)
+  }
 })
 </script> 
