@@ -25,7 +25,7 @@
               name="fullName"
               type="text"
               required
-              class="appearance-none relative block w-[115%] px-3 py-3 text-lg border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 dark:bg-gray-800 dark:border-gray-700 dark:text-white text-center"
+              class="appearance-none relative block w-full px-3 py-3 text-lg border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 dark:bg-gray-800 dark:border-gray-700 dark:text-white text-center"
               placeholder="Your full name, exactly as you want to see it in the app"
             >
           </div>
@@ -37,7 +37,7 @@
               name="username"
               type="text"
               required
-              class="appearance-none relative block w-[115%] px-3 py-3 text-lg border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 dark:bg-gray-800 dark:border-gray-700 dark:text-white text-center"
+              class="appearance-none relative block w-full px-3 py-3 text-lg border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 dark:bg-gray-800 dark:border-gray-700 dark:text-white text-center"
               placeholder="Username (no spaces allowed)"
             >
           </div>
@@ -49,7 +49,7 @@
               name="password"
               type="password"
               required
-              class="appearance-none relative block w-[115%] px-3 py-3 text-lg border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 dark:bg-gray-800 dark:border-gray-700 dark:text-white text-center"
+              class="appearance-none relative block w-full px-3 py-3 text-lg border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 dark:bg-gray-800 dark:border-gray-700 dark:text-white text-center"
               placeholder="Password (no spaces allowed)"
             >
           </div>
@@ -65,7 +65,7 @@
           <button
             type="submit"
             :disabled="isLoading"
-            class="group relative w-[115%] flex justify-center py-3 px-4 border border-transparent text-lg font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+            class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-lg font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
           >
             <span class="absolute left-0 inset-y-0 flex items-center pl-3">
               <svg
