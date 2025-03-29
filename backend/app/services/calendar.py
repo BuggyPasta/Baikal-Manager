@@ -72,9 +72,11 @@ class CalendarService:
         if not calendar:
             return []
             
-        events = calendar.date_search(
+        events = calendar.search(
             start=datetime.fromisoformat(start),
-            end=datetime.fromisoformat(end)
+            end=datetime.fromisoformat(end),
+            event=True,
+            expand=True
         )
         
         return [self._event_to_json(event) for event in events]

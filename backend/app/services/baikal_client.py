@@ -128,7 +128,7 @@ class BaikalClient:
                     # Try to access address book path
                     logger.debug(f"Verifying address book path: {settings['addressBookPath']}")
                     abook_path = settings['addressBookPath'].lstrip('/')
-                    abooks = principal.address_books()
+                    abooks = principal.addressbooks()
                     abook_urls = [str(ab.url) for ab in abooks]
                     logger.debug(f"Available address books: {abook_urls}")
                     
