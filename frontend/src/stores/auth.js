@@ -93,7 +93,15 @@ export const useAuthStore = defineStore('auth', {
 
     async getSettings() {
       try {
-        const response = await axios.get('/api/settings')
+        // Add timestamp to prevent caching
+        const response = await axios.get('/api/settings', {
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
+            'If-None-Match': '',  // Prevent 304 responses
+            'If-Modified-Since': ''  // Prevent 304 responses
+          }
+        })
         this.settings = response.data
         // Sync with serverSettings if they exist in the response
         if (response.data?.baikal) {
