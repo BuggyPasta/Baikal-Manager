@@ -45,11 +45,6 @@ A web-based, self-hosted app for managing Baikal CalDAV/CardDAV contacts and cal
    # Optional Settings
    #######################
 
-   # Authentication type for Baikal server
-   # Values: 'basic' or 'digest'
-   # Note: This is the default auth type. Users can change it in settings.
-   BAIKAL_AUTH_TYPE=basic
-
    # Application name displayed in the UI
    # Default: Baikal-Manager
    APP_NAME=Baikal-Manager
