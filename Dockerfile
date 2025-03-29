@@ -41,7 +41,7 @@ RUN npm install
 
 # Build frontend
 COPY frontend/ .
-RUN npm run build
+RUN ./node_modules/.bin/vite build
 
 # Move built frontend to backend static directory
 RUN mkdir -p /app/backend/app/static && \
