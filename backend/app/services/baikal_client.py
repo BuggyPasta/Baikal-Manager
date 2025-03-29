@@ -6,21 +6,34 @@ from requests.exceptions import ConnectionError, Timeout, SSLError
 import time
 from functools import wraps
 import logging
+import os
 
 # Configure logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+# Ensure log directory exists
+os.makedirs('/data/logs', exist_ok=True)
+
 # Create a file handler
-handler = logging.FileHandler('/data/logs/baikal.log')
+handler = logging.FileHandler('/data/logs/baikal.log', mode='a')
 handler.setLevel(logging.DEBUG)
+
+# Also add a stream handler for immediate console output
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.DEBUG)
 
 # Create a formatter
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
+console_handler.setFormatter(formatter)
 
-# Add the handler to the logger
+# Add the handlers to the logger
 logger.addHandler(handler)
+logger.addHandler(console_handler)
+
+# Test log write
+logger.debug("Baikal client logger initialized")
 
 def retry_on_connection_error(max_retries=3, delay=1):
     def decorator(func):
@@ -34,12 +47,14 @@ def retry_on_connection_error(max_retries=3, delay=1):
                     last_exception = e
                     error_msg = f"Attempt {attempt + 1}/{max_retries} failed: {str(e)}. Retrying in {delay} seconds..."
                     logger.error(error_msg)
+                    print(f"Connection error: {error_msg}")  # Direct console output
                     if attempt < max_retries - 1:
                         raise ConnectionError(error_msg)
                     time.sleep(delay)
                     continue
             error_msg = f"All {max_retries} connection attempts failed. Last error: {str(last_exception)}"
             logger.error(error_msg)
+            print(f"Final error: {error_msg}")  # Direct console output
             raise ConnectionError(error_msg)
         return wrapper
     return decorator
@@ -55,36 +70,47 @@ class BaikalClient:
         Returns: (success: bool, error_message: Optional[str])
         """
         try:
+            print(f"Attempting to verify connection to: {settings['serverUrl']}")  # Direct console output
             logger.debug(f"Verifying connection to server: {settings['serverUrl']}")
             
             # Validate URL format and accessibility
             parsed_url = urlparse(settings['serverUrl'])
             if not all([parsed_url.scheme, parsed_url.netloc]):
-                logger.error(f"Invalid URL format: {settings['serverUrl']}")
+                msg = f"Invalid URL format: {settings['serverUrl']}"
+                print(msg)  # Direct console output
+                logger.error(msg)
                 return False, "Invalid server URL format"
 
             # Try a basic HTTP(S) connection first
             try:
+                print("Attempting basic HTTP connection...")  # Direct console output
                 logger.debug("Attempting basic HTTP connection...")
                 response = requests.get(settings['serverUrl'], timeout=5)
                 content_type = response.headers.get('Content-Type', '').lower()
                 
                 # Log response details
+                print(f"Server Response - Status: {response.status_code}")  # Direct console output
+                print(f"Content-Type: {content_type}")  # Direct console output
                 logger.debug(f"Server Response - Status: {response.status_code}")
                 logger.debug(f"Content-Type: {content_type}")
                 logger.debug(f"Response Headers: {dict(response.headers)}")
                 logger.debug(f"Response Content: {response.text[:200]}...")
                 
                 if response.status_code >= 400:
-                    logger.error(f"Server error response: {response.status_code}")
+                    msg = f"Server error response: {response.status_code}"
+                    print(msg)  # Direct console output
+                    logger.error(msg)
                     return False, f"Server returned error: {response.status_code}"
                 
                 # Check if we're getting a DAV response
                 if not any(t in content_type for t in ['dav', 'xml', 'text/plain']):
-                    logger.error(f"Invalid content type: {content_type}")
+                    msg = f"Invalid content type: {content_type}"
+                    print(msg)  # Direct console output
+                    logger.error(msg)
                     return False, f"Server response doesn't appear to be a CalDAV/CardDAV server (Content-Type: {content_type})"
 
                 # Try CalDAV connection
+                print("Attempting CalDAV connection...")  # Direct console output
                 logger.debug("Attempting CalDAV connection...")
                 try:
                     client = caldav.DAVClient(
@@ -93,44 +119,63 @@ class BaikalClient:
                         password=settings['password']
                     )
                     principal = client.principal()
+                    print("CalDAV connection successful")  # Direct console output
                     logger.debug("CalDAV connection successful")
                     
                     # Try to access calendar path
+                    print(f"Verifying calendar path: {settings['calendarPath']}")  # Direct console output
                     logger.debug(f"Verifying calendar path: {settings['calendarPath']}")
                     calendar_path = settings['calendarPath'].lstrip('/')
                     calendars = [cal.url for cal in principal.calendars()]
+                    print(f"Available calendars: {calendars}")  # Direct console output
                     logger.debug(f"Available calendars: {calendars}")
                     if not any(calendar_path in cal for cal in calendars):
-                        logger.error(f"Calendar path not found: {calendar_path}")
+                        msg = f"Calendar path not found: {calendar_path}"
+                        print(msg)  # Direct console output
+                        logger.error(msg)
                         return False, f"Calendar path not found: {calendar_path}"
                     
                     # Try to access address book path
+                    print(f"Verifying address book path: {settings['addressBookPath']}")  # Direct console output
                     logger.debug(f"Verifying address book path: {settings['addressBookPath']}")
                     abook_path = settings['addressBookPath'].lstrip('/')
                     abooks = [ab.url for ab in principal.address_books()]
+                    print(f"Available address books: {abooks}")  # Direct console output
                     logger.debug(f"Available address books: {abooks}")
                     if not any(abook_path in ab for ab in abooks):
-                        logger.error(f"Address book path not found: {abook_path}")
+                        msg = f"Address book path not found: {abook_path}"
+                        print(msg)  # Direct console output
+                        logger.error(msg)
                         return False, f"Address book path not found: {abook_path}"
                     
                     return True, None
                     
                 except Exception as e:
-                    logger.error(f"CalDAV connection error: {str(e)}")
+                    msg = f"CalDAV connection error: {str(e)}"
+                    print(msg)  # Direct console output
+                    logger.error(msg)
                     return False, f"CalDAV connection failed: {str(e)}"
                 
             except SSLError as e:
-                logger.error(f"SSL Error: {str(e)}")
+                msg = f"SSL Error: {str(e)}"
+                print(msg)  # Direct console output
+                logger.error(msg)
                 return False, "SSL/TLS connection failed. If using local network, ensure URL uses http://"
             except Timeout as e:
-                logger.error(f"Timeout Error: {str(e)}")
+                msg = f"Timeout Error: {str(e)}"
+                print(msg)  # Direct console output
+                logger.error(msg)
                 return False, "Connection timed out. Please check the server URL and network connection"
             except Exception as e:
-                logger.error(f"HTTP connection error: {str(e)}")
+                msg = f"HTTP connection error: {str(e)}"
+                print(msg)  # Direct console output
+                logger.error(msg)
                 return False, f"Connection error: {str(e)}"
                 
         except Exception as e:
-            logger.error(f"Unexpected error: {str(e)}")
+            msg = f"Unexpected error: {str(e)}"
+            print(msg)  # Direct console output
+            logger.error(msg)
             return False, f"Unexpected error: {str(e)}"
 
     def get_client(self) -> caldav.DAVClient:
