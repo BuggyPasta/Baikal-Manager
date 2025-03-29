@@ -30,11 +30,11 @@
           <div class="flex items-center justify-between mb-4">
             <div class="flex items-center space-x-4">
               <button @click="previousPeriod" class="p-2 flex items-center">
-                <img src="@/assets/arrow-previous.svg" alt="Previous" class="w-5 h-5 dark:invert" />
+                <img :src="arrowPrevious" alt="Previous" class="w-5 h-5 dark:invert" />
               </button>
               <h2 class="text-xl font-semibold">{{ currentPeriodLabel }}</h2>
               <button @click="nextPeriod" class="p-2 flex items-center">
-                <img src="@/assets/arrow-next.svg" alt="Next" class="w-5 h-5 dark:invert" />
+                <img :src="arrowNext" alt="Next" class="w-5 h-5 dark:invert" />
               </button>
             </div>
           </div>
@@ -276,10 +276,10 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { format, addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, parseISO, compareAsc, setMinutes, setHours, addMinutes, isWithinInterval, isBefore, isAfter, differenceInMinutes } from 'date-fns'
+import { format, addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, parseISO, compareAsc, setMinutes, setHours, addMinutes, isWithinInterval, isBefore, isAfter, differenceInMinutes, addMonths, subMonths, addWeeks, subWeeks } from 'date-fns'
 import EventModal from '@/components/EventModal.vue'
-import arrowPrevious from '@/assets/icons/arrow-previous.svg'
-import arrowNext from '@/assets/icons/arrow-next.svg'
+import arrowPrevious from '@/assets/arrow-previous.svg'
+import arrowNext from '@/assets/arrow-next.svg'
 
 // View options
 const views = ['month', 'week', 'day', 'list']
