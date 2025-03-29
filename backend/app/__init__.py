@@ -1,4 +1,5 @@
 from flask import Flask, send_from_directory
+from flask_cors import CORS
 from .routes.health import health_bp
 from .routes.auth import bp as auth_bp
 from .routes.settings import bp as settings_bp
@@ -10,9 +11,11 @@ import os
 def create_app():
     """Create and configure the Flask application"""
     app = Flask(__name__, static_folder='/app/backend/app/static')
+    CORS(app)
     
     # Basic setup
     os.makedirs(Config.DATA_PATH, exist_ok=True)
+    os.makedirs(Config.LOG_PATH, exist_ok=True)
     app.config['SECRET_KEY'] = Config.APP_SECRET_KEY
     
     # Configure app

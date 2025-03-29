@@ -386,6 +386,10 @@ function getEventsForDate(date) {
   })
 }
 
+function getDayEvents(date) {
+  return getEventsForDate(date)
+}
+
 function getEventTop(event) {
   const start = new Date(event.start)
   return (start.getHours() * 60 + start.getMinutes()) * (48/60) // 48px per hour
@@ -602,4 +606,16 @@ function getEventStyles(event) {
 function getMinutesFromMidnight(date) {
   return date.getHours() * 60 + date.getMinutes()
 }
+
+// Export functions for template use
+defineExpose({
+  getDayEvents,
+  getEventsForDate,
+  formatEventTime,
+  getEventTop,
+  getEventHeight,
+  openNewEventModal,
+  openEventModal,
+  closeEventModal
+})
 </script> 

@@ -98,6 +98,16 @@ def verify_baikal_connection():
     safe_data = {k: v for k, v in data.items() if k != 'password'}
     logger.debug(f"Verifying connection with settings: {safe_data}")
     
+    # Validate required fields
+    required_fields = ['serverUrl', 'username', 'password', 'addressBookPath', 'calendarPath']
+    if not all(field in data for field in required_fields):
+        error_msg = f"Missing required fields. Required: {', '.join(required_fields)}"
+        logger.error(error_msg)
+        return jsonify({
+            'error': 'Missing required fields',
+            'details': error_msg
+        }), 400
+    
     try:
         success, error_message = baikal_client.verify_connection(data)
         logger.debug(f"Verification result - Success: {success}, Error: {error_message}")
@@ -112,13 +122,15 @@ def verify_baikal_connection():
                 'details': error_message
             }), 400
     except ConnectionError as e:
-        logger.error(f"Connection error during verification: {str(e)}")
+        error_msg = f"Connection error during verification: {str(e)}"
+        logger.error(error_msg)
         return jsonify({
             'error': 'Connection error',
             'details': str(e)
         }), 400
     except Exception as e:
-        logger.exception("Unexpected error during verification")
+        error_msg = f"Unexpected error during verification: {str(e)}"
+        logger.exception(error_msg)
         return jsonify({
             'error': 'Verification error',
             'details': str(e)
