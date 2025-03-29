@@ -1,6 +1,8 @@
 from typing import List, Dict
 import vobject
 from .vcard import VCardService
+from urllib.parse import urljoin
+import caldav
 
 class AddressBookService:
     """Service for handling address book operations"""
@@ -8,10 +10,32 @@ class AddressBookService:
     def __init__(self):
         self.vcard = VCardService()
     
+    def _get_client(self, user_data: Dict) -> object:
+        if not user_data:
+            raise ValueError('User data required')
+            
+        creds = user_data.get('baikal_credentials')
+        if not creds:
+            raise ValueError('Missing Baikal credentials')
+            
+        # Construct address book URL
+        base_url = creds['serverUrl'].rstrip('/')
+        address_path = creds.get('addressBookPath', '').strip()
+        if not address_path:
+            address_path = f"/addressbooks/{creds['username']}/default/"
+        
+        address_url = urljoin(base_url, address_path.lstrip('/'))
+            
+        return caldav.DAVClient(
+            url=address_url,
+            username=creds['username'],
+            password=creds['password']
+        )
+    
     def _get_book(self, user_data: Dict, book_id: str = None) -> object:
         if not user_data:
             raise ValueError('User data required')
-        client = user_data.get_carddav_client()
+        client = self._get_client(user_data)
         books = client.principal().addressbooks()
         if not books:
             raise ValueError('No address books found')
@@ -22,7 +46,7 @@ class AddressBookService:
     
     def get_books(self, user_data: Dict) -> List[Dict]:
         """Get list of available address books"""
-        client = user_data.get_carddav_client()
+        client = self._get_client(user_data)
         return [
             {'id': book.url, 'name': book.name or 'Default'} 
             for book in client.principal().addressbooks()

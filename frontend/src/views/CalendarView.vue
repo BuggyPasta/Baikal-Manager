@@ -1,56 +1,80 @@
 # Create the CalendarView component
 <template>
   <div class="container mx-auto px-4 py-8">
-    <!-- Calendar Header -->
-    <div class="flex flex-col md:flex-row justify-between items-center mb-8">
-      <div class="flex items-center space-x-4 mb-4 md:mb-0">
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Calendar</h1>
-        <div class="flex items-center bg-white dark:bg-gray-800 rounded-lg shadow">
-          <button
-            v-for="view in views"
-            :key="view.value"
-            @click="currentView = view.value"
-            :class="[
-              'px-4 py-2 text-sm font-medium',
-              currentView === view.value
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-            ]"
-          >
-            {{ view.label }}
-          </button>
-        </div>
-      </div>
-      
+    <!-- View Controls -->
+    <div class="flex justify-between items-center mb-6">
       <div class="flex items-center space-x-4">
         <button
-          @click="navigateDate('prev')"
-          class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+          v-for="view in ['month', 'week', 'day', 'list']"
+          :key="view"
+          @click="currentView = view"
+          :class="[
+            'px-4 py-2 rounded-md text-sm font-medium',
+            currentView === view
+              ? 'bg-blue-600 text-white'
+              : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+          ]"
         >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-          </svg>
+          {{ view.charAt(0).toUpperCase() + view.slice(1) }}
         </button>
-        
+      </div>
+
+      <div class="flex items-center space-x-4">
         <button
-          @click="currentDate = new Date()"
-          class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+          class="btn-secondary"
+          @click="goToToday"
         >
           Today
         </button>
-        
-        <span class="text-lg font-semibold text-gray-900 dark:text-white">
-          {{ formatDateRange }}
-        </span>
-        
-        <button
-          @click="navigateDate('next')"
-          class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+        <div class="flex items-center space-x-2">
+          <button
+            class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
+            @click="previousPeriod"
+          >
+            <span class="sr-only">Previous</span>
+            &lt;
+          </button>
+          <h2 class="text-xl font-semibold">{{ currentPeriodLabel }}</h2>
+          <button
+            class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
+            @click="nextPeriod"
+          >
+            <span class="sr-only">Next</span>
+            &gt;
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- List View -->
+    <div v-if="currentView === 'list'" class="bg-white dark:bg-gray-800 rounded-lg shadow">
+      <div class="divide-y divide-gray-200 dark:divide-gray-700">
+        <div
+          v-for="event in sortedEvents"
+          :key="event.id"
+          @click="openEventModal(event)"
+          class="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
         >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
+          <div class="flex justify-between items-start">
+            <div>
+              <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                {{ event.title }}
+              </h3>
+              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                {{ formatEventDateTime(event) }}
+              </p>
+              <p v-if="event.description" class="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                {{ event.description }}
+              </p>
+            </div>
+            <div
+              :class="[
+                'w-3 h-3 rounded-full',
+                `bg-${event.color || 'blue'}-500`
+              ]"
+            ></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -134,99 +158,94 @@
       </div>
 
       <!-- Week View -->
-      <div v-else-if="currentView === 'week'" class="grid grid-cols-8 gap-px">
+      <div v-else-if="currentView === 'week'" class="calendar-grid grid-cols-8">
         <!-- Time Column -->
-        <div class="bg-gray-50 dark:bg-gray-700">
-          <div class="h-12"></div> <!-- Header spacer -->
-          <div
-            v-for="hour in 24"
-            :key="hour"
-            class="h-12 border-t border-gray-200 dark:border-gray-600 px-2 py-1"
-          >
-            <span class="text-xs text-gray-500 dark:text-gray-400">
-              {{ formatHour(hour - 1) }}
-            </span>
-          </div>
-        </div>
-
-        <!-- Days Columns -->
+        <div class="calendar-header-cell"></div>
         <div
           v-for="day in weekDays"
           :key="day"
-          class="relative"
+          class="calendar-header-cell"
         >
-          <!-- Day Header -->
-          <div
-            class="h-12 px-2 py-1 text-center text-sm font-medium bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
-          >
-            {{ day }}
-          </div>
-
-          <!-- Hours Grid -->
-          <div class="relative">
-            <div
-              v-for="hour in 24"
-              :key="hour"
-              class="h-12 border-t border-gray-200 dark:border-gray-600"
-            ></div>
-
-            <!-- Events -->
-            <div
-              v-for="event in getEventsForDay(day)"
-              :key="event.id"
-              :style="{
-                top: `${getEventTop(event)}px`,
-                height: `${getEventHeight(event)}px`,
-                left: '4px',
-                right: '4px'
-              }"
-              @click="openEventModal(event)"
-              class="absolute px-2 py-1 text-xs rounded-md cursor-pointer overflow-hidden"
-              :class="[
-                event.color ? `bg-${event.color}-100 text-${event.color}-800` : 'bg-blue-100 text-blue-800',
-                `dark:bg-${event.color || 'blue'}-800 dark:text-${event.color || 'blue'}-100`
-              ]"
-            >
-              {{ event.title }}
-            </div>
-          </div>
+          {{ format(day, 'EEEE, d MMMM yyyy') }}
         </div>
+
+        <!-- Time slots -->
+        <template v-for="hour in 24" :key="hour">
+          <div class="calendar-time-cell">
+            {{ formatHour(hour - 1) }}
+          </div>
+          <template v-for="day in weekDays" :key="`${hour}-${day}`">
+            <div class="calendar-week-cell">
+              <!-- First 30 minutes -->
+              <div class="h-[30px] relative">
+                <div
+                  v-for="event in getEventsForTimeSlot(day, hour - 1, 0)"
+                  :key="event.id"
+                  @click="openEventModal(event)"
+                  class="absolute inset-x-1 rounded-md px-2 py-1 text-xs cursor-pointer overflow-hidden"
+                  :class="getEventClasses(event)"
+                  :style="getEventStyles(event)"
+                >
+                  {{ event.title }}
+                </div>
+              </div>
+              <!-- Second 30 minutes -->
+              <div class="h-[30px] relative border-t border-gray-100 dark:border-gray-700">
+                <div
+                  v-for="event in getEventsForTimeSlot(day, hour - 1, 30)"
+                  :key="event.id"
+                  @click="openEventModal(event)"
+                  class="absolute inset-x-1 rounded-md px-2 py-1 text-xs cursor-pointer overflow-hidden"
+                  :class="getEventClasses(event)"
+                  :style="getEventStyles(event)"
+                >
+                  {{ event.title }}
+                </div>
+              </div>
+            </div>
+          </template>
+        </template>
       </div>
 
       <!-- Day View -->
-      <div v-else class="grid grid-cols-1">
-        <!-- Time Column -->
+      <div v-else-if="currentView === 'day'" class="calendar-grid grid-cols-1">
+        <div class="calendar-header-cell">
+          {{ format(currentDate, 'EEEE, d MMMM yyyy') }}
+        </div>
         <div class="relative">
-          <div
-            v-for="hour in 24"
-            :key="hour"
-            class="h-16 border-t border-gray-200 dark:border-gray-600"
-          >
-            <span class="absolute -mt-3 ml-2 text-xs text-gray-500 dark:text-gray-400">
+          <template v-for="hour in 24" :key="hour">
+            <!-- First 30 minutes -->
+            <div class="calendar-time-cell">
               {{ formatHour(hour - 1) }}
-            </span>
-          </div>
-
-          <!-- Events -->
-          <div
-            v-for="event in dayEvents"
-            :key="event.id"
-            :style="{
-              top: `${getEventTop(event)}px`,
-              height: `${getEventHeight(event)}px`,
-              left: '60px',
-              right: '4px'
-            }"
-            @click="openEventModal(event)"
-            class="absolute px-4 py-2 rounded-lg cursor-pointer"
-            :class="[
-              event.color ? `bg-${event.color}-100 text-${event.color}-800` : 'bg-blue-100 text-blue-800',
-              `dark:bg-${event.color || 'blue'}-800 dark:text-${event.color || 'blue'}-100`
-            ]"
-          >
-            <div class="font-medium">{{ event.title }}</div>
-            <div class="text-xs">{{ formatEventTime(event) }}</div>
-          </div>
+              <div class="absolute inset-x-16 h-[30px]">
+                <div
+                  v-for="event in getEventsForTimeSlot(currentDate, hour - 1, 0)"
+                  :key="event.id"
+                  @click="openEventModal(event)"
+                  class="absolute inset-x-1 rounded-md px-2 py-1 text-sm cursor-pointer overflow-hidden"
+                  :class="getEventClasses(event)"
+                  :style="getEventStyles(event)"
+                >
+                  {{ event.title }}
+                </div>
+              </div>
+            </div>
+            <!-- Second 30 minutes -->
+            <div class="calendar-time-cell border-l-0">
+              <div class="absolute inset-x-16 h-[30px]">
+                <div
+                  v-for="event in getEventsForTimeSlot(currentDate, hour - 1, 30)"
+                  :key="event.id"
+                  @click="openEventModal(event)"
+                  class="absolute inset-x-1 rounded-md px-2 py-1 text-sm cursor-pointer overflow-hidden"
+                  :class="getEventClasses(event)"
+                  :style="getEventStyles(event)"
+                >
+                  {{ event.title }}
+                </div>
+              </div>
+            </div>
+          </template>
         </div>
       </div>
     </div>
@@ -255,15 +274,11 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { format, addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday } from 'date-fns'
+import { format, addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, parseISO, compareAsc, setMinutes, setHours, addMinutes, isWithinInterval, isBefore, isAfter, differenceInMinutes } from 'date-fns'
 import EventModal from '@/components/EventModal.vue'
 
 // View options
-const views = [
-  { label: 'Month', value: 'month' },
-  { label: 'Week', value: 'week' },
-  { label: 'Day', value: 'day' }
-]
+const views = ['month', 'week', 'day', 'list']
 
 // State
 const currentView = ref('month')
@@ -321,7 +336,7 @@ function navigateDate(direction) {
 }
 
 function formatHour(hour) {
-  return format(new Date().setHours(hour, 0, 0, 0), 'h a')
+  return format(setHours(new Date(), hour), 'HH:mm')
 }
 
 function formatEventTime(event) {
@@ -424,4 +439,81 @@ watch([currentView, currentDate], () => {
 onMounted(() => {
   fetchEvents()
 })
+
+// Format event date and time for list view
+function formatEventDateTime(event) {
+  const start = parseISO(event.start)
+  const end = parseISO(event.end)
+  
+  if (event.allDay) {
+    return format(start, 'EEEE, d MMMM yyyy')
+  }
+  
+  if (isSameDay(start, end)) {
+    return `${format(start, 'EEEE, d MMMM yyyy')} ${format(start, 'HH:mm')} - ${format(end, 'HH:mm')}`
+  }
+  
+  return `${format(start, 'EEEE, d MMMM yyyy HH:mm')} - ${format(end, 'EEEE, d MMMM yyyy HH:mm')}`
+}
+
+// Sort events for list view
+const sortedEvents = computed(() => {
+  const now = new Date()
+  return events.value.sort((a, b) => {
+    const aStart = parseISO(a.start)
+    const bStart = parseISO(b.start)
+    const aDistance = Math.abs(aStart - now)
+    const bDistance = Math.abs(bStart - now)
+    
+    if (aStart >= now && bStart >= now) {
+      // Both future events - sort by closest to now
+      return compareAsc(aStart, bStart)
+    } else if (aStart < now && bStart < now) {
+      // Both past events - sort by closest to now
+      return compareAsc(bDistance, aDistance)
+    } else {
+      // Mix of past and future - future events first
+      return aStart >= now ? -1 : 1
+    }
+  })
+})
+
+// Helper functions for events
+function getEventsForTimeSlot(date, hour, minute) {
+  return events.value.filter(event => {
+    const start = parseISO(event.start)
+    const end = parseISO(event.end)
+    const slotStart = setMinutes(setHours(date, hour), minute)
+    const slotEnd = addMinutes(slotStart, 30)
+    return isWithinInterval(start, { start: slotStart, end: slotEnd }) ||
+           isWithinInterval(end, { start: slotStart, end: slotEnd }) ||
+           (isBefore(start, slotStart) && isAfter(end, slotEnd))
+  })
+}
+
+function getEventClasses(event) {
+  return [
+    `bg-${event.color || 'blue'}-100`,
+    `text-${event.color || 'blue'}-800`,
+    `dark:bg-${event.color || 'blue'}-800`,
+    `dark:text-${event.color || 'blue'}-100`
+  ]
+}
+
+function getEventStyles(event) {
+  const start = parseISO(event.start)
+  const end = parseISO(event.end)
+  const duration = differenceInMinutes(end, start)
+  const height = `${Math.min(duration * 2, 100)}%`
+  const top = `${getMinutesFromMidnight(start) * 2}%`
+  return {
+    height,
+    top,
+    zIndex: duration > 30 ? 10 : 1
+  }
+}
+
+function getMinutesFromMidnight(date) {
+  return date.getHours() * 60 + date.getMinutes()
+}
 </script> 

@@ -2,6 +2,16 @@
   <div class="settings-view">
     <h1 class="text-2xl font-bold mb-6">Settings</h1>
     
+    <!-- Success Message -->
+    <div v-if="showSuccessMessage" class="mb-4 p-4 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded-md">
+      Settings saved successfully!
+    </div>
+
+    <!-- Error Message -->
+    <div v-if="errorMessage" class="mb-4 p-4 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded-md">
+      {{ errorMessage }}
+    </div>
+
     <div class="grid gap-6">
       <!-- Server Settings -->
       <div class="card">
@@ -14,9 +24,10 @@
               v-model="serverSettings.baikalUrl"
               type="url"
               class="input"
-              placeholder="https://your-baikal-server.com"
+              placeholder="https://your-baikal-server.com/dav.php"
               required
             />
+            <p class="form-hint">The base URL of your Baikal server (e.g., http://10.13.88.6:1910/dav.php)</p>
           </div>
           
           <div class="form-group">
@@ -31,10 +42,61 @@
               <option value="digest">Digest Auth</option>
             </select>
           </div>
+
+          <div class="form-group">
+            <label for="username" class="label">Server Username</label>
+            <input
+              id="username"
+              v-model="serverSettings.username"
+              type="text"
+              class="input"
+              required
+            />
+          </div>
           
-          <button type="submit" class="btn-primary">
-            Save Server Settings
-          </button>
+          <div class="form-group">
+            <label for="password" class="label">Server Password</label>
+            <input
+              id="password"
+              v-model="serverSettings.password"
+              type="password"
+              class="input"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="addressBookPath" class="label">Address Book Path (Optional)</label>
+            <input
+              id="addressBookPath"
+              v-model="serverSettings.addressBookPath"
+              type="text"
+              class="input"
+              placeholder="/addressbooks/username/default/"
+            />
+            <p class="form-hint">Leave empty to use default path: /addressbooks/username/default/</p>
+          </div>
+
+          <div class="form-group">
+            <label for="calendarPath" class="label">Calendar Path (Optional)</label>
+            <input
+              id="calendarPath"
+              v-model="serverSettings.calendarPath"
+              type="text"
+              class="input"
+              placeholder="/calendars/username/default/"
+            />
+            <p class="form-hint">Leave empty to use default path: /calendars/username/default/</p>
+          </div>
+          
+          <div class="flex space-x-4">
+            <button type="submit" class="btn-primary">
+              Save Server Settings
+            </button>
+            <button type="button" @click="testConnection" class="btn-secondary">
+              Test Connection
+            </button>
+          </div>
         </form>
       </div>
 
@@ -125,10 +187,16 @@ import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
+const showSuccessMessage = ref(false)
+const errorMessage = ref('')
 
 const serverSettings = ref({
   baikalUrl: '',
-  authType: 'basic'
+  authType: 'basic',
+  username: '',
+  password: '',
+  addressBookPath: '',
+  calendarPath: ''
 })
 
 const userSettings = ref({
@@ -147,7 +215,11 @@ const loadSettings = async () => {
     const settings = await authStore.getSettings()
     serverSettings.value = {
       baikalUrl: settings.baikalUrl || '',
-      authType: settings.authType || 'basic'
+      authType: settings.authType || 'basic',
+      username: settings.username || '',
+      password: settings.password || '',
+      addressBookPath: settings.addressBookPath || '',
+      calendarPath: settings.calendarPath || ''
     }
     userSettings.value = {
       username: settings.username || '',
@@ -158,8 +230,16 @@ const loadSettings = async () => {
       timeout: settings.timeout || 10
     }
   } catch (error) {
-    console.error('Failed to load settings:', error)
+    errorMessage.value = 'Failed to load settings: ' + error.message
   }
+}
+
+// Show success message temporarily
+const showSuccess = () => {
+  showSuccessMessage.value = true
+  setTimeout(() => {
+    showSuccessMessage.value = false
+  }, 3000)
 }
 
 // Save settings
@@ -167,10 +247,15 @@ const saveServerSettings = async () => {
   try {
     await authStore.updateSettings({ 
       baikalUrl: serverSettings.value.baikalUrl,
-      authType: serverSettings.value.authType
+      authType: serverSettings.value.authType,
+      username: serverSettings.value.username,
+      password: serverSettings.value.password,
+      addressBookPath: serverSettings.value.addressBookPath,
+      calendarPath: serverSettings.value.calendarPath
     })
+    showSuccess()
   } catch (error) {
-    console.error('Failed to save server settings:', error)
+    errorMessage.value = 'Failed to save server settings: ' + error.message
   }
 }
 
@@ -180,8 +265,9 @@ const saveUserSettings = async () => {
       username: userSettings.value.username,
       ...(userSettings.value.password && { password: userSettings.value.password })
     })
+    showSuccess()
   } catch (error) {
-    console.error('Failed to save user settings:', error)
+    errorMessage.value = 'Failed to save user settings: ' + error.message
   }
 }
 
@@ -191,8 +277,38 @@ const saveAppSettings = async () => {
       theme: appSettings.value.theme,
       timeout: appSettings.value.timeout
     })
+    showSuccess()
   } catch (error) {
-    console.error('Failed to save app settings:', error)
+    errorMessage.value = 'Failed to save app settings: ' + error.message
+  }
+}
+
+// Add test connection function
+const testConnection = async () => {
+  try {
+    const response = await fetch('/api/settings/test-baikal', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        serverUrl: serverSettings.value.baikalUrl,
+        username: serverSettings.value.username,
+        password: serverSettings.value.password
+      })
+    })
+    
+    const data = await response.json()
+    if (response.ok) {
+      showSuccessMessage.value = true
+      setTimeout(() => {
+        showSuccessMessage.value = false
+      }, 3000)
+    } else {
+      errorMessage.value = data.error || 'Failed to connect to server'
+    }
+  } catch (error) {
+    errorMessage.value = 'Failed to test connection: ' + error.message
   }
 }
 

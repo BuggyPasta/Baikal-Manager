@@ -4,6 +4,7 @@ import uuid
 import icalendar
 import pytz
 import caldav
+from urllib.parse import urljoin
 
 class CalendarService:
     """Service for handling calendar operations"""
@@ -12,8 +13,17 @@ class CalendarService:
         creds = user_data.get('baikal_credentials')
         if not creds:
             raise ValueError('Missing Baikal credentials')
+            
+        # Construct calendar URL
+        base_url = creds['serverUrl'].rstrip('/')
+        calendar_path = creds.get('calendarPath', '').strip()
+        if not calendar_path:
+            calendar_path = f"/calendars/{creds['username']}/default/"
+        
+        calendar_url = urljoin(base_url, calendar_path.lstrip('/'))
+            
         return caldav.DAVClient(
-            url=creds['serverUrl'],
+            url=calendar_url,
             username=creds['username'],
             password=creds['password']
         )
