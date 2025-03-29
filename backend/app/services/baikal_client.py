@@ -150,24 +150,28 @@ class BaikalClient:
             root_url = str(principal.url)
             logger.debug(f"Principal root URL: {root_url}")
             
-            # Verify addressbook path exists by checking if we can make a client for it
+            # Verify addressbook path exists
             try:
-                abook_url = urljoin(settings['serverUrl'], settings['addressBookPath'].lstrip('/'))
-                test_client = caldav.DAVClient(url=abook_url, auth=auth, ssl_verify_cert=verify_ssl)
-                response = test_client.request('GET')
+                # Build the full URL properly based on the principal URL
+                principal_path = urlparse(root_url).path
+                base_path = principal_path.split('/principals/')[0]  # Get the base DAV path
+                abook_url = urljoin(settings['serverUrl'], base_path + abook_path)
                 
-                if response.status == 404:
+                logger.debug(f"Checking address book URL: {abook_url}")
+                response = requests.get(abook_url, auth=auth, verify=verify_ssl)
+                
+                if response.status_code == 404:
                     msg = f"Address book not found at: {settings['addressBookPath']}"
                     logger.error(msg)
                     self.client = None
                     return False, msg
-                elif response.status == 401:
+                elif response.status_code == 401:
                     msg = "Authentication failed for address book access"
                     logger.error(msg)
                     self.client = None
                     return False, msg
-                elif response.status >= 400:
-                    msg = f"Error accessing address book: HTTP {response.status}"
+                elif response.status_code >= 400:
+                    msg = f"Error accessing address book: HTTP {response.status_code}"
                     logger.error(msg)
                     self.client = None
                     return False, msg
