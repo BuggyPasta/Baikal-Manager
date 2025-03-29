@@ -374,7 +374,11 @@ function formatEventTime(event) {
   return `${format(new Date(event.start), 'h:mm a')} - ${format(new Date(event.end), 'h:mm a')}`
 }
 
-function getEventsForDate(date) {
+const getDayEvents = (date) => {
+  return getEventsForDate(date)
+}
+
+const getEventsForDate = (date) => {
   // Filter events for the given date
   return events.value.filter(event => {
     const eventDate = new Date(event.start)
@@ -386,20 +390,13 @@ function getEventsForDate(date) {
   })
 }
 
-function getDayEvents(date) {
-  return getEventsForDate(date)
-}
-
-function getEventTop(event) {
-  const start = new Date(event.start)
-  return (start.getHours() * 60 + start.getMinutes()) * (48/60) // 48px per hour
-}
-
-function getEventHeight(event) {
-  const start = new Date(event.start)
-  const end = new Date(event.end)
-  const minutes = (end - start) / 1000 / 60
-  return minutes * (48/60) // 48px per hour
+const getEventClass = (event) => {
+  return [
+    `bg-${event.color || 'blue'}-100`,
+    `text-${event.color || 'blue'}-800`,
+    `dark:bg-${event.color || 'blue'}-800`,
+    `dark:text-${event.color || 'blue'}-100`
+  ]
 }
 
 function openNewEventModal(date = null) {
@@ -606,16 +603,4 @@ function getEventStyles(event) {
 function getMinutesFromMidnight(date) {
   return date.getHours() * 60 + date.getMinutes()
 }
-
-// Export functions for template use
-defineExpose({
-  getDayEvents,
-  getEventsForDate,
-  formatEventTime,
-  getEventTop,
-  getEventHeight,
-  openNewEventModal,
-  openEventModal,
-  closeEventModal
-})
 </script> 
