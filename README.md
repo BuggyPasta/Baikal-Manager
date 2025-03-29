@@ -26,7 +26,7 @@ A web-based, self-hosted app for managing Baikal CalDAV/CardDAV contacts and cal
 1. In Dockge:
    Use the docker-compose file to create your stack
 
-2. Create a `.env` file with the following settings:
+2. Create a `.env` file and adjust your settings (or copy and modify `.env.example`):
 
    ```env
    #######################
@@ -109,6 +109,7 @@ A web-based, self-hosted app for managing Baikal CalDAV/CardDAV contacts and cal
 3. Create a `docker-compose.yml` file:
    ```yaml
    version: '3.8'
+
    services:
      baikal-manager:
        build:
@@ -121,6 +122,8 @@ A web-based, self-hosted app for managing Baikal CalDAV/CardDAV contacts and cal
          - ${HOST_DATA_DIR}:/data
        env_file:
          - .env
+       environment:
+         - TZ=Europe/London
        healthcheck:
          test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
          interval: 30s
@@ -128,11 +131,21 @@ A web-based, self-hosted app for managing Baikal CalDAV/CardDAV contacts and cal
          retries: 3
          start_period: 5s
        restart: unless-stopped
+       security_opt:
+         - no-new-privileges:true
+       cap_drop:
+         - ALL
+       cap_add:
+         - NET_BIND_SERVICE
        labels:
          - "com.centurylinklabs.watchtower.enable=false"
    ```
 
-   Note: The volume mount uses the `HOST_DATA_DIR` variable from your `.env` file, ensuring data persistence in your specified location.
+   Note: 
+   - The volume mount uses the `HOST_DATA_DIR` variable from your `.env` file
+   - The timezone is set to Europe/London by default
+   - Security features are enabled by default
+   - Container capabilities are restricted for better security
 
 4. Click "Deploy" and wait until everything is pulled from the GitHub repo.
 
@@ -153,6 +166,10 @@ Security Features:
 - Encrypted data storage
 - Secure password hashing
 - HTTPS support (when configured)
+- Container security features:
+  * No new privileges
+  * Dropped capabilities
+  * Minimal required capabilities only
 
 ## Usage
 
@@ -187,6 +204,7 @@ Security Features:
    - Set appropriate file permissions
    - Review security headers in configuration
    - Keep encryption keys secure
+   - Container security is pre-configured
 
 3. **Logging**:
    - Configure `LOG_LEVEL` appropriately
@@ -226,6 +244,7 @@ Security Features:
    - Connection errors: Verify Baikal server URL and credentials
    - Session issues: Check `APP_SECRET_KEY` configuration
    - Encryption errors: Verify encryption key permissions
+   - Timezone issues: Check TZ environment variable in docker-compose.yml
 
 2. Debug Steps:
    - Check application logs in `HOST_DATA_DIR/logs/app.log`
