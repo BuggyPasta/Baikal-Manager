@@ -85,97 +85,85 @@ class BaikalClient:
             try:
                 print("Attempting basic HTTP connection...")  # Direct console output
                 logger.debug("Attempting basic HTTP connection...")
-                response = requests.get(settings['serverUrl'], timeout=5)
-                content_type = response.headers.get('Content-Type', '').lower()
                 
-                # Log response details
-                print(f"Server Response - Status: {response.status_code}")  # Direct console output
-                print(f"Content-Type: {content_type}")  # Direct console output
-                logger.debug(f"Server Response - Status: {response.status_code}")
-                logger.debug(f"Content-Type: {content_type}")
-                logger.debug(f"Response Headers: {dict(response.headers)}")
-                logger.debug(f"Response Content: {response.text[:200]}...")
-                
-                if response.status_code >= 400:
-                    msg = f"Server error response: {response.status_code}"
-                    print(msg)  # Direct console output
-                    logger.error(msg)
-                    return False, f"Server returned error: {response.status_code}"
-                
-                # Check if we're getting a DAV response
-                if not any(t in content_type for t in ['dav', 'xml', 'text/plain']):
-                    msg = f"Invalid content type: {content_type}"
-                    print(msg)  # Direct console output
-                    logger.error(msg)
-                    return False, f"Server response doesn't appear to be a CalDAV/CardDAV server (Content-Type: {content_type})"
-
-                # Try CalDAV connection
+                # Try direct CalDAV connection first
                 print("Attempting CalDAV connection...")  # Direct console output
                 logger.debug("Attempting CalDAV connection...")
                 try:
+                    auth_type = settings.get('authType', 'basic').lower()
+                    logger.debug(f"Using authentication type: {auth_type}")
+                    
                     client = caldav.DAVClient(
                         url=settings['serverUrl'],
                         username=settings['username'],
-                        password=settings['password']
+                        password=settings['password'],
+                        auth=auth_type
                     )
+                    
+                    # Test principal connection
+                    logger.debug("Testing principal connection...")
                     principal = client.principal()
-                    print("CalDAV connection successful")  # Direct console output
-                    logger.debug("CalDAV connection successful")
+                    logger.debug("Principal connection successful")
                     
                     # Try to access calendar path
-                    print(f"Verifying calendar path: {settings['calendarPath']}")  # Direct console output
                     logger.debug(f"Verifying calendar path: {settings['calendarPath']}")
                     calendar_path = settings['calendarPath'].lstrip('/')
-                    calendars = [cal.url for cal in principal.calendars()]
-                    print(f"Available calendars: {calendars}")  # Direct console output
-                    logger.debug(f"Available calendars: {calendars}")
-                    if not any(calendar_path in cal for cal in calendars):
+                    calendars = principal.calendars()
+                    calendar_urls = [str(cal.url) for cal in calendars]
+                    logger.debug(f"Available calendars: {calendar_urls}")
+                    
+                    if not any(calendar_path in str(cal) for cal in calendar_urls):
                         msg = f"Calendar path not found: {calendar_path}"
-                        print(msg)  # Direct console output
                         logger.error(msg)
-                        return False, f"Calendar path not found: {calendar_path}"
+                        return False, msg
                     
                     # Try to access address book path
-                    print(f"Verifying address book path: {settings['addressBookPath']}")  # Direct console output
                     logger.debug(f"Verifying address book path: {settings['addressBookPath']}")
                     abook_path = settings['addressBookPath'].lstrip('/')
-                    abooks = [ab.url for ab in principal.address_books()]
-                    print(f"Available address books: {abooks}")  # Direct console output
-                    logger.debug(f"Available address books: {abooks}")
-                    if not any(abook_path in ab for ab in abooks):
-                        msg = f"Address book path not found: {abook_path}"
-                        print(msg)  # Direct console output
-                        logger.error(msg)
-                        return False, f"Address book path not found: {abook_path}"
+                    abooks = principal.address_books()
+                    abook_urls = [str(ab.url) for ab in abooks]
+                    logger.debug(f"Available address books: {abook_urls}")
                     
+                    if not any(abook_path in str(ab) for ab in abook_urls):
+                        msg = f"Address book path not found: {abook_path}"
+                        logger.error(msg)
+                        return False, msg
+                    
+                    logger.debug("All paths verified successfully")
                     return True, None
                     
+                except caldav.lib.error.AuthorizationError as e:
+                    msg = f"Authentication failed: {str(e)}"
+                    logger.error(msg)
+                    return False, msg
+                except caldav.lib.error.NotFoundError as e:
+                    msg = f"Resource not found: {str(e)}"
+                    logger.error(msg)
+                    return False, msg
                 except Exception as e:
                     msg = f"CalDAV connection error: {str(e)}"
-                    print(msg)  # Direct console output
                     logger.error(msg)
-                    return False, f"CalDAV connection failed: {str(e)}"
+                    logger.exception("Full traceback:")
+                    return False, msg
                 
             except SSLError as e:
                 msg = f"SSL Error: {str(e)}"
-                print(msg)  # Direct console output
                 logger.error(msg)
                 return False, "SSL/TLS connection failed. If using local network, ensure URL uses http://"
             except Timeout as e:
                 msg = f"Timeout Error: {str(e)}"
-                print(msg)  # Direct console output
                 logger.error(msg)
                 return False, "Connection timed out. Please check the server URL and network connection"
             except Exception as e:
                 msg = f"HTTP connection error: {str(e)}"
-                print(msg)  # Direct console output
                 logger.error(msg)
+                logger.exception("Full traceback:")
                 return False, f"Connection error: {str(e)}"
                 
         except Exception as e:
             msg = f"Unexpected error: {str(e)}"
-            print(msg)  # Direct console output
             logger.error(msg)
+            logger.exception("Full traceback:")
             return False, f"Unexpected error: {str(e)}"
 
     def get_client(self) -> caldav.DAVClient:
