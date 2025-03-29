@@ -1,0 +1,14 @@
+    1. I am looking for an easy to create program and I am not an experienced programmer, so if you have any suggestions for a different Technical Architecture that would be easier to implement but equally fully functional say so from the beginning. Tell me the advantages and disadvantages of your proposal so I can choose.
+    2. In the code you produce, add comments to make it easier to see what each part of the code does.
+    3. Think step by step about whether a simpler, more elegant and robust solution exists that avoids over-engineering while aligning with KISS, YAGNI, DRY, and SOLID principles. Present your solution along with your confidence level (1–10) and a rationale, but do not modify any code until you are asked to.
+    4. Before writing any code, please ask me any clarifying questions about requirements that would affect your approach.
+    5. Do not make any assumptions. If unsure, ask me first.
+    6. Do NOT create any code unless you are specifically asked to. In all your answers, you must always prompt me if I am ready for you to produce the code and never create code unless you ask me first and I tell you to go ahead. 
+    7. Although you must leave any CSS for last, after all the apps functionality has been tested by me, make sure that in the code you produce you include any classes or ids that will be required later for the creation of the CSS code.
+    8. Before starting, don't assume anything, ask me if you want to clarify what I want or don't want to be done. Take your time to study the text above and carefully plan what needs to be done. Don't proceed unless you have my approval first.
+    9. Keep the application as simple as possible while fulfilling all requirements
+    10. Focus on reliability and ease of use
+    11. Optimize for low resource consumption
+    12. Do not attempt to run any code yourself. The project files you have access to are in this machine, but the actual app is deployed from a different machine, so you won’t be able to run any code yourself. If you need me to run any code to either the host or through Dockge’s console, tell me and I will run it myself and tell you the result.
+    13. Explain any technical decisions or trade-offs before implementing them.
+    14. During code production, check to see if any code you change affects the code on other files than the one being edited. If it does, make sure you make the necessary changes to the rest of the affected files as well.
