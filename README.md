@@ -147,7 +147,7 @@ A web-based, self-hosted app for managing Baikal CalDAV/CardDAV contacts and cal
    - All required directories are created automatically on first launch
    - The timezone is set to Europe/London by default
    - Security features are enabled by default
-   - Container capabilities are restricted for better security
+   - Container runs with minimal required privileges for directory management
    - The application runs as a non-root user for security
 
 4. Click "Deploy" and wait until everything is pulled from the GitHub repo.
@@ -172,10 +172,9 @@ Security Features:
 - Secure password hashing
 - HTTPS support (when configured)
 - Container security features:
-  * No new privileges
-  * Dropped capabilities
-  * Minimal required capabilities only
+  * Minimal required capabilities only (CHOWN, DAC_OVERRIDE, FOWNER, NET_BIND_SERVICE)
   * Non-root user execution
+  * Restricted file system access
 
 ## Usage
 
