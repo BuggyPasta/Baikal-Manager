@@ -100,8 +100,10 @@ def verify_baikal_connection():
     
     # Validate required fields
     required_fields = ['serverUrl', 'username', 'password', 'addressBookPath', 'calendarPath']
-    if not all(field in data for field in required_fields):
-        error_msg = f"Missing required fields. Required: {', '.join(required_fields)}"
+    missing_fields = [field for field in required_fields if not data.get(field)]
+    
+    if missing_fields:
+        error_msg = f"Missing required fields: {', '.join(missing_fields)}"
         logger.error(error_msg)
         return jsonify({
             'error': 'Missing required fields',

@@ -27,10 +27,10 @@
         <h2 class="text-xl font-semibold mb-4">Server Settings</h2>
         <form @submit.prevent="saveServerSettings" class="space-y-4">
           <div class="form-group">
-            <label for="baikalUrl" class="label">Baikal Server URL</label>
+            <label for="serverUrl" class="label">Baikal Server URL</label>
             <input
-              id="baikalUrl"
-              v-model="serverSettings.baikalUrl"
+              id="serverUrl"
+              v-model="serverSettings.serverUrl"
               type="url"
               class="input"
               placeholder="https://your-baikal-server.com/dav.php"
@@ -221,7 +221,7 @@ const successMessage = ref('')
 const loadingMessage = ref('')
 
 const serverSettings = ref({
-  baikalUrl: '',
+  serverUrl: '',
   authType: 'basic',
   username: '',
   password: '',
@@ -245,7 +245,7 @@ const loadSettings = async () => {
   try {
     const settings = await authStore.getSettings()
     serverSettings.value = {
-      baikalUrl: settings.baikalUrl || '',
+      serverUrl: settings.serverUrl || '',
       authType: settings.authType || 'basic',
       username: settings.username || '',
       password: settings.password || '',
