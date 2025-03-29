@@ -5,7 +5,7 @@
         <!-- Logo and App Name -->
         <div class="flex items-center">
           <img src="@/assets/icons/app_logo.svg" alt="Baikal Manager" class="h-8 w-8 mr-2">
-          <span class="text-xl font-semibold">Baikal-Manager</span>
+          <span class="text-xl font-semibold">{{ appName }}</span>
         </div>
 
         <!-- Navigation Links -->
@@ -63,18 +63,21 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import modeDarkIcon from '@/assets/icons/mode_dark.svg'
+import modeLightIcon from '@/assets/icons/mode_light.svg'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
 const isMobileMenuOpen = ref(false)
 const isDarkMode = ref(false)
+const appName = import.meta.env.VITE_APP_NAME || 'Baikal-Manager'
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const userFullName = computed(() => authStore.userFullName)
 
 const themeIcon = computed(() => 
-  isDarkMode.value ? '/icons/mode_light.svg' : '/icons/mode_dark.svg'
+  isDarkMode.value ? modeLightIcon : modeDarkIcon
 )
 
 function toggleTheme() {

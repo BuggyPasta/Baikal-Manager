@@ -12,7 +12,8 @@ ENV PYTHONUNBUFFERED=1 \
     FLASK_STATIC_FOLDER=/app/backend/app/static \
     APP_NAME=Baikal-Manager \
     DATA_DIR=/data \
-    NODE_ENV=production
+    NODE_ENV=production \
+    VITE_APP_NAME=Baikal-Manager
 
 # Install minimal system dependencies
 RUN apt-get update && apt-get install -y \
