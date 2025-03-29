@@ -134,7 +134,7 @@ class BaikalClient:
             self.client = caldav.DAVClient(
                 url=settings['serverUrl'],
                 auth=auth,
-                verify=verify_ssl
+                ssl_verify_cert=verify_ssl
             )
             
             # Test principal connection
