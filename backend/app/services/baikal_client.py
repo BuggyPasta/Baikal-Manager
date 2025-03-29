@@ -1,198 +1,251 @@
-from typing import Dict, Tuple, Optional
+from typing import Dict, Tuple, Optional, Union
+import logging
+import threading
+import time
+from functools import wraps
+from urllib.parse import urlparse, urljoin
+
 import caldav
 from caldav.davclient import DAVClient
-from caldav.objects import Principal, AddressBookResource
-from urllib.parse import urlparse, urljoin
 import requests
 from requests.auth import HTTPDigestAuth, HTTPBasicAuth
 from requests.exceptions import ConnectionError, Timeout, SSLError
-import time
-from functools import wraps
-import logging
-import os
+from caldav.objects import Principal
+from urllib.parse import unquote
+from pathlib import Path
 
 # Configure logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-# Ensure log directory exists
-os.makedirs('/data/logs', exist_ok=True)
+# Only add handler if none exist
+if not logger.handlers:
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+    logger.debug("Baikal client logger initialized")
 
-# Create a file handler
-handler = logging.FileHandler('/data/logs/baikal.log', mode='a')
-handler.setLevel(logging.DEBUG)
-
-# Also add a stream handler for immediate console output
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.DEBUG)
-
-# Create a formatter
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-console_handler.setFormatter(formatter)
-
-# Add the handlers to the logger
-logger.addHandler(handler)
-logger.addHandler(console_handler)
-
-# Test log write
-logger.debug("Baikal client logger initialized")
+def normalize_url_path(path: str) -> str:
+    """Normalize a URL path for consistent comparison"""
+    # Ensure path starts with a slash
+    if not path.startswith('/'):
+        path = '/' + path
+    # Remove trailing slash
+    path = path.rstrip('/')
+    # Normalize multiple slashes while preserving leading slash
+    parts = path.split('/')
+    return '/' + '/'.join(filter(None, parts))
 
 def retry_on_connection_error(max_retries=3, delay=1):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            last_exception = None
+            last_error = None
             for attempt in range(max_retries):
                 try:
-                    return func(*args, **kwargs)
-                except (ConnectionError, Timeout) as e:
-                    last_exception = e
-                    error_msg = f"Attempt {attempt + 1}/{max_retries} failed: {str(e)}. Retrying in {delay} seconds..."
-                    logger.error(error_msg)
-                    print(f"Connection error: {error_msg}")  # Direct console output
+                    success, error_msg = func(*args, **kwargs)
+                    # Don't retry on validation errors, auth failures, or missing resources
+                    if success or any(x in str(error_msg) for x in [
+                        "Invalid server URL format",
+                        "Missing required fields",
+                        "Authentication failed",
+                        "not found",
+                        "path mismatch",
+                        "No calendars found"
+                    ]):
+                        return success, error_msg
+                    # Only retry on connection/timeout issues
+                    last_error = error_msg
                     if attempt < max_retries - 1:
-                        raise ConnectionError(error_msg)
-                    time.sleep(delay)
-                    continue
-            error_msg = f"All {max_retries} connection attempts failed. Last error: {str(last_exception)}"
-            logger.error(error_msg)
-            print(f"Final error: {error_msg}")  # Direct console output
-            raise ConnectionError(error_msg)
+                        error_msg += f". Retrying in {delay} seconds..."
+                        logger.error(error_msg)
+                        time.sleep(delay)
+                        continue
+                    break
+                except (ConnectionError, Timeout, SSLError, requests.exceptions.RequestException) as e:
+                    last_error = str(e)
+                    error_msg = f"Attempt {attempt + 1}/{max_retries} failed: {last_error}"
+                    if attempt < max_retries - 1:
+                        error_msg += f". Retrying in {delay} seconds..."
+                        logger.error(error_msg)
+                        time.sleep(delay)
+                        continue
+                    break
+            return False, f"All attempts failed. Last error: {last_error}"
         return wrapper
     return decorator
 
 class BaikalClient:
     def __init__(self):
-        self.client = None
+        self._client = None
+        self._lock = threading.Lock()
         
-    @retry_on_connection_error()
+    @property
+    def client(self) -> Optional[caldav.DAVClient]:
+        """Thread-safe access to the client"""
+        with self._lock:
+            return self._client
+            
+    @client.setter
+    def client(self, value: Optional[caldav.DAVClient]):
+        """Thread-safe setting of the client"""
+        with self._lock:
+            self._client = value
+        
     def verify_connection(self, settings: Dict) -> Tuple[bool, Optional[str]]:
         """
         Verify connection to Baikal server with detailed error handling
         Returns: (success: bool, error_message: Optional[str])
         """
+        # Clear any existing client before verification
+        self.client = None
+        
         try:
-            print(f"Attempting to verify connection to: {settings['serverUrl']}")  # Direct console output
+            # Validate required fields
+            required_fields = ['serverUrl', 'username', 'password', 'addressBookPath', 'calendarPath']
+            missing_fields = [field for field in required_fields if not settings.get(field)]
+            if missing_fields:
+                msg = f"Missing required fields: {', '.join(missing_fields)}"
+                logger.error(msg)
+                return False, msg
+
             logger.debug(f"Verifying connection to server: {settings['serverUrl']}")
             
-            # Validate URL format and accessibility
+            # Validate URL format
             parsed_url = urlparse(settings['serverUrl'])
             if not all([parsed_url.scheme, parsed_url.netloc]):
                 msg = f"Invalid URL format: {settings['serverUrl']}"
-                print(msg)  # Direct console output
                 logger.error(msg)
                 return False, "Invalid server URL format"
 
-            # Try a basic HTTP(S) connection first
+            # Create authentication handler
+            auth_type = settings.get('authType', 'digest').lower()
+            verify_ssl = settings.get('verifySSL', False)  # Default to False for local development
+            logger.debug(f"Using authentication type: {auth_type}, SSL verification: {verify_ssl}")
+            
+            if auth_type == 'basic':
+                auth = HTTPBasicAuth(settings['username'], settings['password'])
+            else:  # default to digest
+                auth = HTTPDigestAuth(settings['username'], settings['password'])
+                
+            # Create a single client for verification and use
+            self.client = caldav.DAVClient(
+                url=settings['serverUrl'],
+                username=settings['username'],
+                password=settings['password'],
+                auth=auth,
+                verify=verify_ssl
+            )
+            
+            # Test principal connection
+            logger.debug("Testing principal connection...")
+            principal = self.client.principal()
+            logger.debug("Principal connection successful")
+            
+            # Verify address book path first (simpler check)
+            logger.debug(f"Verifying address book path: {settings['addressBookPath']}")
+            abook_path = normalize_url_path(settings['addressBookPath'])
+            address_url = urljoin(settings['serverUrl'], abook_path)
+            
+            # Use the same auth and SSL settings for address book verification
             try:
-                print("Attempting basic HTTP connection...")  # Direct console output
-                logger.debug("Attempting basic HTTP connection...")
+                # Baikal requires PROPFIND for CardDAV resources
+                response = requests.request(
+                    'PROPFIND',
+                    address_url,
+                    auth=auth,
+                    verify=verify_ssl,
+                    headers={'Depth': '0'},
+                    timeout=10
+                )
                 
-                # Try direct CalDAV connection first
-                print("Attempting CalDAV connection...")  # Direct console output
-                logger.debug("Attempting CalDAV connection...")
-                try:
-                    # Default to digest since that's what Baikal server requires
-                    auth_type = settings.get('authType', 'digest').lower()
-                    logger.debug(f"Using authentication type: {auth_type}")
-                    
-                    # Create appropriate auth handler based on type
-                    if auth_type == 'basic':
-                        auth = HTTPBasicAuth(settings['username'], settings['password'])
-                    else:  # default to digest
-                        auth = HTTPDigestAuth(settings['username'], settings['password'])
-                        
-                    client = caldav.DAVClient(
-                        url=settings['serverUrl'],
-                        username=settings['username'],
-                        password=settings['password'],
-                        auth=auth
-                    )
-                    
-                    # Test principal connection
-                    logger.debug("Testing principal connection...")
-                    principal = client.principal()
-                    logger.debug("Principal connection successful")
-                    
-                    # Try to access calendar path
-                    logger.debug(f"Verifying calendar path: {settings['calendarPath']}")
-                    calendar_path = settings['calendarPath'].lstrip('/')
-                    calendars = principal.calendars()
-                    calendar_urls = [str(cal.url) for cal in calendars]
-                    logger.debug(f"Available calendars: {calendar_urls}")
-                    
-                    if not any(calendar_path in str(cal) for cal in calendar_urls):
-                        msg = f"Calendar path not found: {calendar_path}"
-                        logger.error(msg)
-                        return False, msg
-                    
-                    # Try to access address book path
-                    logger.debug(f"Verifying address book path: {settings['addressBookPath']}")
-                    abook_path = settings['addressBookPath'].lstrip('/')
-                    
-                    # Get the principal's address books using CardDAV
-                    abooks = []
-                    try:
-                        # First try addressbooks()
-                        abooks = principal.addressbooks()
-                    except AttributeError:
-                        # If that fails, try to get the address book directly
-                        try:
-                            address_url = urljoin(settings['serverUrl'], abook_path)
-                            abook = AddressBookResource(client=client, url=address_url)
-                            abooks = [abook]
-                        except Exception as e:
-                            logger.error(f"Failed to access address book directly: {str(e)}")
-                            return False, "Failed to access address book"
-                    
-                    abook_urls = [str(ab.url) for ab in abooks]
-                    logger.debug(f"Available address books: {abook_urls}")
-                    
-                    if not any(abook_path in str(ab) for ab in abook_urls):
-                        msg = f"Address book path not found: {abook_path}"
-                        logger.error(msg)
-                        return False, msg
-                    
-                    logger.debug("All paths verified successfully")
-                    return True, None
-                    
-                except caldav.lib.error.AuthorizationError as e:
-                    msg = f"Authentication failed: {str(e)}"
+                if response.status_code in [401, 403]:
+                    msg = "Authentication failed for address book"
                     logger.error(msg)
+                    self.client = None
                     return False, msg
-                except caldav.lib.error.NotFoundError as e:
-                    msg = f"Resource not found: {str(e)}"
+                elif response.status_code == 404:
+                    msg = f"Address book not found at: {settings['addressBookPath']}"
                     logger.error(msg)
+                    self.client = None
                     return False, msg
-                except Exception as e:
-                    msg = f"CalDAV connection error: {str(e)}"
+                elif response.status_code not in [200, 207]:  # 207 is Multi-Status success for Baikal
+                    msg = f"Error accessing address book: HTTP {response.status_code}"
                     logger.error(msg)
-                    logger.exception("Full traceback:")
+                    self.client = None
                     return False, msg
+                    
+                logger.debug("Address book access verified")
                 
-            except SSLError as e:
-                msg = f"SSL Error: {str(e)}"
+            except requests.exceptions.RequestException as e:
+                msg = f"Failed to access address book: {str(e)}"
                 logger.error(msg)
-                return False, "SSL/TLS connection failed. If using local network, ensure URL uses http://"
-            except Timeout as e:
-                msg = f"Timeout Error: {str(e)}"
+                self.client = None
+                return False, msg
+            
+            # Now verify calendar path
+            logger.debug(f"Verifying calendar path: {settings['calendarPath']}")
+            calendar_path = normalize_url_path(settings['calendarPath'])
+            calendars = principal.calendars()
+            calendar_urls = [str(cal.url) for cal in calendars]
+            
+            if not calendar_urls:
+                msg = "No calendars found on server. Please create a calendar first."
                 logger.error(msg)
-                return False, "Connection timed out. Please check the server URL and network connection"
-            except Exception as e:
-                msg = f"HTTP connection error: {str(e)}"
-                logger.error(msg)
-                logger.exception("Full traceback:")
-                return False, f"Connection error: {str(e)}"
+                self.client = None
+                return False, msg
                 
+            logger.debug(f"Available calendars: {calendar_urls}")
+            
+            # More precise calendar path verification
+            calendar_found = False
+            for cal_url in calendar_urls:
+                cal_path = normalize_url_path(urlparse(cal_url).path)
+                if cal_path == calendar_path or cal_path + '/' == calendar_path or cal_path == calendar_path + '/':
+                    calendar_found = True
+                    break
+            
+            if not calendar_found:
+                msg = f"Calendar path not found: {settings['calendarPath']}"
+                logger.error(msg)
+                self.client = None
+                return False, msg
+            
+            logger.debug("All paths verified successfully")
+            
+            return True, None
+                
+        except caldav.lib.error.AuthorizationError as e:
+            msg = f"Authentication failed: {str(e)}"
+            logger.error(msg)
+            self.client = None
+            return False, msg
+        except caldav.lib.error.NotFoundError as e:
+            msg = f"Resource not found: {str(e)}"
+            logger.error(msg)
+            self.client = None
+            return False, msg
+        except (ConnectionError, Timeout, SSLError) as e:
+            msg = f"Connection error: {str(e)}"
+            logger.error(msg)
+            self.client = None
+            return False, msg
+        except caldav.lib.error.DAVError as e:
+            msg = f"Baikal server error: {str(e)}"
+            logger.error(msg)
+            self.client = None
+            return False, msg
         except Exception as e:
             msg = f"Unexpected error: {str(e)}"
             logger.error(msg)
-            logger.exception("Full traceback:")
-            return False, f"Unexpected error: {str(e)}"
+            self.client = None
+            return False, msg
 
-    def get_client(self) -> caldav.DAVClient:
-        """Get the cached client or raise error if not connected"""
-        if not self.client:
-            raise ValueError("Not connected to Baikal server")
-        return self.client 
+    def get_client(self) -> Tuple[bool, Union[caldav.DAVClient, str]]:
+        """Thread-safe access to get the cached client or return error tuple"""
+        client = self.client
+        if not client:
+            return False, "Not connected to Baikal server"
+        return True, client 

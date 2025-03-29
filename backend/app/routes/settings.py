@@ -3,7 +3,6 @@ from ..utils.user_store import get_user_store
 from ..config.config import Config
 from ..services.baikal_client import BaikalClient
 import caldav
-import os
 import json
 from datetime import datetime, timedelta
 import logging
@@ -12,12 +11,14 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-# Create a file handler
-handler = logging.FileHandler('/data/logs/settings.log')
-handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+# Only add handler if none exist
+if not logger.handlers:
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+    logger.debug("Settings logger initialized")
 
 bp = Blueprint('settings', __name__, url_prefix='/api/settings')
 baikal_client = BaikalClient()
@@ -27,9 +28,6 @@ DEFAULT_APP_SETTINGS = {
     'autoLogoutMinutes': Config.DEFAULT_INACTIVITY_TIMEOUT,
     'theme': Config.DEFAULT_MODE
 }
-
-def get_logs_path(username: str) -> str:
-    return os.path.join(Config.LOG_PATH, f'{username}.log')
 
 def require_auth():
     if not (user_id := session.get('user_id')):
@@ -144,12 +142,11 @@ def test_baikal_connection():
         return jsonify({'error': 'Missing required fields'}), 400
     
     try:
-        caldav.DAVClient(
-            url=data['serverUrl'],
-            username=data['username'],
-            password=data['password']
-        ).principal()
-        return jsonify({'message': 'Connected'})
+        success, error_message = baikal_client.verify_connection(data)
+        if success:
+            return jsonify({'message': 'Connected'})
+        else:
+            return jsonify({'error': error_message}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
@@ -175,50 +172,6 @@ def save_app_settings():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@bp.route('/logs', methods=['GET'])
-def get_logs():
-    user_id, user_data, error = require_auth()
-    if error:
-        return jsonify(error), error['code']
-    
-    logs_path = get_logs_path(user_id)
-    if not os.path.exists(logs_path):
-        return jsonify([])
-    
-    try:
-        one_month_ago = datetime.now() - timedelta(days=30)
-        logs = []
-        with open(logs_path, 'r') as f:
-            for line in f:
-                try:
-                    if (log := json.loads(line)) and datetime.fromtimestamp(log['timestamp']) > one_month_ago:
-                        logs.append(log)
-                except:
-                    continue
-        return jsonify(logs)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@bp.route('/logs', methods=['DELETE'])
-def clear_logs():
-    user_id, user_data, error = require_auth()
-    if error:
-        return jsonify(error), error['code']
-    
-    try:
-        logs_path = get_logs_path(user_id)
-        if os.path.exists(logs_path):
-            os.remove(logs_path)
-        return jsonify({'message': 'Logs cleared'})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 def log_error(username: str, message: str):
-    try:
-        logs_path = get_logs_path(username)
-        os.makedirs(os.path.dirname(logs_path), exist_ok=True)
-        with open(logs_path, 'a') as f:
-            json.dump({'timestamp': datetime.now().timestamp(), 'message': message}, f)
-            f.write('\n')
-    except:
-        pass  # Fail silently as this is just logging 
+    """Log errors through the console logger"""
+    logger.error(f"User {username}: {message}") 

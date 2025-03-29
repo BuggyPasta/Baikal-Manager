@@ -5,28 +5,28 @@ import icalendar
 import pytz
 import caldav
 from urllib.parse import urljoin
+from .baikal_client import BaikalClient
 
 class CalendarService:
     """Service for handling calendar operations"""
+    
+    def __init__(self):
+        self.baikal_client = BaikalClient()
     
     def _get_client(self, user_data: Dict) -> caldav.DAVClient:
         creds = user_data.get('baikal_credentials')
         if not creds:
             raise ValueError('Missing Baikal credentials')
             
-        # Construct calendar URL
-        base_url = creds['serverUrl'].rstrip('/')
-        calendar_path = creds.get('calendarPath', '').strip()
-        if not calendar_path:
-            calendar_path = f"/calendars/{creds['username']}/default/"
-        
-        calendar_url = urljoin(base_url, calendar_path.lstrip('/'))
+        success, client_or_error = self.baikal_client.verify_connection(creds)
+        if not success:
+            raise ValueError(f'Connection failed: {client_or_error}')
             
-        return caldav.DAVClient(
-            url=calendar_url,
-            username=creds['username'],
-            password=creds['password']
-        )
+        success, client_or_error = self.baikal_client.get_client()
+        if not success:
+            raise ValueError(f'Failed to get client: {client_or_error}')
+            
+        return client_or_error
     
     def _get_calendar(self, user_data: Dict, calendar_id: str = None) -> Optional[caldav.Calendar]:
         client = self._get_client(user_data)

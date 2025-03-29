@@ -57,7 +57,7 @@ def get_address_books():
         books = client.principal().addressbooks()
         return jsonify([{'id': book.id, 'name': book.name} for book in books])
     except Exception as e:
-        log_error(session.get('username', 'unknown'), str(e))
+        log_error(session.get('user_id', 'unknown'), str(e))
         return jsonify({'error': 'Failed to fetch address books'}), 500
 
 @contacts.route('/contacts', methods=['GET'])
@@ -69,7 +69,7 @@ def get_contacts():
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
     except Exception as e:
-        log_error(session.get('username', 'unknown'), str(e))
+        log_error(session.get('user_id', 'unknown'), str(e))
         return jsonify({'error': 'Failed to fetch contacts'}), 500
 
 @contacts.route('/contacts', methods=['POST'])
@@ -87,7 +87,7 @@ def create_contact():
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
     except Exception as e:
-        log_error(session.get('username', 'unknown'), str(e))
+        log_error(session.get('user_id', 'unknown'), str(e))
         return jsonify({'error': 'Failed to create contact'}), 500
 
 @contacts.route('/contacts/<contact_id>', methods=['PUT'])
@@ -106,7 +106,7 @@ def update_contact(contact_id):
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
     except Exception as e:
-        log_error(session.get('username', 'unknown'), str(e))
+        log_error(session.get('user_id', 'unknown'), str(e))
         return jsonify({'error': 'Failed to update contact'}), 500
 
 @contacts.route('/contacts/<contact_id>', methods=['DELETE'])
@@ -123,7 +123,7 @@ def delete_contact(contact_id):
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
     except Exception as e:
-        log_error(session.get('username', 'unknown'), str(e))
+        log_error(session.get('user_id', 'unknown'), str(e))
         return jsonify({'error': 'Failed to delete contact'}), 500
 
 @contacts.route('/contacts/import', methods=['POST'])
@@ -145,7 +145,7 @@ def import_contacts():
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
     except Exception as e:
-        log_error(session.get('username', 'unknown'), str(e))
+        log_error(session.get('user_id', 'unknown'), str(e))
         return jsonify({'error': 'Failed to import contacts'}), 500
 
 @contacts.route('/contacts/export', methods=['GET'])
@@ -161,5 +161,5 @@ def export_contacts():
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
     except Exception as e:
-        log_error(session.get('username', 'unknown'), str(e))
+        log_error(session.get('user_id', 'unknown'), str(e))
         return jsonify({'error': 'Failed to export contacts'}), 500 
