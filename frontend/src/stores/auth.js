@@ -109,9 +109,34 @@ export const useAuthStore = defineStore('auth', {
       const response = await axios.post('/api/settings/baikal', settings)
       this.serverSettings = response.data
       localStorage.setItem('serverSettings', JSON.stringify(this.serverSettings))
-      // Reload settings to ensure we have the latest state
-      await this.getSettings()
       return response.data
+    },
+
+    // Add new method to ensure settings are loaded
+    async ensureSettings() {
+      // First try to load from localStorage
+      if (!this.serverSettings) {
+        const stored = localStorage.getItem('serverSettings')
+        if (stored) {
+          this.serverSettings = JSON.parse(stored)
+        }
+      }
+      
+      // Then get latest from server
+      if (!this.settings) {
+        const response = await axios.get('/api/settings')
+        this.settings = response.data
+        // Update serverSettings if they exist in the response
+        if (response.data.serverSettings) {
+          this.serverSettings = response.data.serverSettings
+          localStorage.setItem('serverSettings', JSON.stringify(this.serverSettings))
+        }
+      }
+      
+      return {
+        settings: this.settings,
+        serverSettings: this.serverSettings
+      }
     },
 
     // Activity monitoring

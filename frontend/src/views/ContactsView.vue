@@ -391,8 +391,8 @@ watch([searchQuery, selectedAddressBook], () => {
 // Initial load
 onMounted(async () => {
   try {
-    // First ensure we have settings loaded
-    await authStore.getSettings()
+    // Ensure settings are loaded
+    await authStore.ensureSettings()
     
     // Then check if we have valid server settings
     if (!authStore.serverSettings?.serverUrl) {
