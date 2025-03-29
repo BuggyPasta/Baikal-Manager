@@ -92,11 +92,28 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async getSettings() {
-      if (!this.settings) {
+      try {
         const response = await axios.get('/api/settings')
         this.settings = response.data
+        // Sync with serverSettings if they exist in the response
+        if (response.data?.baikal) {
+          this.serverSettings = response.data.baikal
+          localStorage.setItem('serverSettings', JSON.stringify(response.data.baikal))
+        } else if (this.serverSettings) {
+          // If we have serverSettings but they're not in the response, update the response
+          this.settings = { ...response.data, baikal: this.serverSettings }
+          // Also persist these settings back to server to ensure consistency
+          await axios.post('/api/settings', this.settings)
+        }
+        return this.settings
+      } catch (err) {
+        console.error('Error fetching settings:', err)
+        // If server fetch fails, use cached settings
+        return {
+          ...this.settings,
+          baikal: this.serverSettings
+        }
       }
-      return this.settings
     },
 
     async updateSettings(settings) {
@@ -107,34 +124,28 @@ export const useAuthStore = defineStore('auth', {
 
     async updateServerSettings(settings) {
       const response = await axios.post('/api/settings/baikal', settings)
-      // If connection was successful, store the original settings that worked
+      // If connection was successful, store the settings
       if (response.data?.message === "Connection successful") {
+        // Store in both places to ensure consistency
         this.serverSettings = settings  // Store the settings that worked
         localStorage.setItem('serverSettings', JSON.stringify(settings))
+        // Update the main settings object with the working settings
+        this.settings = { ...this.settings || {}, baikal: settings }
+        // Persist to server
+        await axios.post('/api/settings', { baikal: settings })
       }
       return response.data
     },
 
-    // Add new method to ensure settings are loaded
     async ensureSettings() {
       // First try to load from localStorage
-      if (!this.serverSettings) {
-        const stored = localStorage.getItem('serverSettings')
-        if (stored) {
-          this.serverSettings = JSON.parse(stored)
-        }
+      const stored = localStorage.getItem('serverSettings')
+      if (stored) {
+        this.serverSettings = JSON.parse(stored)
       }
       
-      // Then get latest from server
-      if (!this.settings) {
-        const response = await axios.get('/api/settings')
-        this.settings = response.data
-        // Update serverSettings if they exist in the response
-        if (response.data.serverSettings) {
-          this.serverSettings = response.data.serverSettings
-          localStorage.setItem('serverSettings', JSON.stringify(this.serverSettings))
-        }
-      }
+      // Then get latest from server and sync
+      await this.getSettings()
       
       return {
         settings: this.settings,
