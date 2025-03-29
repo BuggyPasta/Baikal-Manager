@@ -96,8 +96,7 @@ class BaikalClient:
                     client = caldav.DAVClient(
                         url=settings['serverUrl'],
                         username=settings['username'],
-                        password=settings['password'],
-                        auth=auth_type
+                        password=settings['password']
                     )
                     
                     # Test principal connection
