@@ -139,12 +139,19 @@
     @apply bg-blue-50 dark:bg-blue-900/20;
   }
 
+  .calendar-view {
+    @apply h-full flex flex-col overflow-hidden;
+  }
+
   .calendar-header {
     @apply bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 sticky top-0 z-50;
+    position: sticky;
+    top: 0;
   }
 
   .calendar-content {
-    @apply relative z-0 overflow-auto flex-1;
+    @apply relative overflow-auto flex-1;
+    z-index: 10;
   }
 
   .calendar-header-cell {

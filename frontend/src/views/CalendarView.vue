@@ -27,16 +27,14 @@
           >
             Today
           </button>
-          <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center space-x-4">
-              <button @click="previousPeriod" class="p-2 flex items-center">
-                <img :src="arrowPrevious" alt="Previous" class="w-5 h-5 dark:invert" />
-              </button>
-              <h2 class="text-xl font-semibold">{{ currentPeriodLabel }}</h2>
-              <button @click="nextPeriod" class="p-2 flex items-center">
-                <img :src="arrowNext" alt="Next" class="w-5 h-5 dark:invert" />
-              </button>
-            </div>
+          <div class="flex items-center">
+            <button @click="previousPeriod" class="p-2 flex items-center justify-center">
+              <img :src="arrowPrevious" alt="Previous" class="w-5 h-5 dark:invert" />
+            </button>
+            <h2 class="text-xl font-semibold px-4">{{ currentPeriodLabel }}</h2>
+            <button @click="nextPeriod" class="p-2 flex items-center justify-center">
+              <img :src="arrowNext" alt="Next" class="w-5 h-5 dark:invert" />
+            </button>
           </div>
         </div>
       </div>
@@ -96,59 +94,49 @@
       <div v-else class="bg-white dark:bg-gray-800 rounded-lg shadow">
         <!-- Month View -->
         <div v-if="currentView === 'month'" class="grid grid-cols-7 gap-0 border border-gray-200 dark:border-gray-700">
-          <!-- Day Headers -->
+          <!-- Days of week header -->
           <div
             v-for="day in weekDays"
             :key="day"
-            class="p-2 text-center text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 border-b border-r border-gray-200 dark:border-gray-700"
+            class="p-2 text-center font-semibold border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
           >
-            {{ format(day, 'EEE') }}
-            <div class="text-xs">{{ format(day, 'd MMM') }}</div>
+            {{ day }}
           </div>
-          
-          <!-- Calendar Days -->
+
+          <!-- Calendar days -->
           <div
-            v-for="(day, index) in monthDays"
-            :key="index"
+            v-for="day in currentMonthDays"
+            :key="day.date"
             :class="[
               'min-h-[120px] p-2 border border-gray-200 dark:border-gray-700',
               day.isCurrentMonth ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900',
-              day.isToday ? 'bg-blue-50 dark:bg-blue-900/30' : ''
+              day.isToday ? 'bg-blue-50 dark:bg-blue-900/30' : '',
+              'relative'
             ]"
           >
-            <div class="flex justify-between items-center mb-1">
-              <span
-                :class="[
-                  'text-sm font-medium',
-                  day.isCurrentMonth
-                    ? 'text-gray-900 dark:text-white'
-                    : 'text-gray-400 dark:text-gray-500'
-                ]"
-              >
-                {{ day.date.getDate() }}
+            <div class="flex justify-between">
+              <span :class="[
+                'text-sm',
+                !day.isCurrentMonth && 'text-gray-400 dark:text-gray-600',
+                day.isToday && 'font-bold'
+              ]">
+                {{ format(day.date, 'd') }}
               </span>
               <button
-                v-if="day.isCurrentMonth"
-                @click="openNewEventModal(day.date)"
-                class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                @click="openEventModal(day.date)"
+                class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
               >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
+                +
               </button>
             </div>
-            
-            <!-- Events -->
-            <div class="space-y-1">
+            <!-- Events list -->
+            <div class="mt-1 space-y-1">
               <div
-                v-for="event in day.events"
+                v-for="event in getDayEvents(day.date)"
                 :key="event.id"
-                @click="openEventModal(event)"
-                class="px-2 py-1 text-xs rounded-md cursor-pointer truncate"
-                :class="[
-                  event.color ? `bg-${event.color}-100 text-${event.color}-800` : 'bg-blue-100 text-blue-800',
-                  `dark:bg-${event.color || 'blue'}-800 dark:text-${event.color || 'blue'}-100`
-                ]"
+                @click="openEventModal(day.date, event)"
+                class="text-xs p-1 rounded cursor-pointer"
+                :class="getEventClass(event)"
               >
                 {{ event.title }}
               </div>
@@ -326,16 +314,30 @@ const formatDateRange = computed(() => {
   }
 })
 
-const monthDays = computed(() => {
+const currentMonthDays = computed(() => {
   const start = startOfMonth(currentDate.value)
   const end = endOfMonth(currentDate.value)
   const days = eachDayOfInterval({ start, end })
   
-  return days.map(date => ({
+  // Get the first day of the month
+  const firstDayOfMonth = startOfMonth(currentDate.value)
+  
+  // Get the last day of the month
+  const lastDayOfMonth = endOfMonth(currentDate.value)
+  
+  // Get the start of the first week
+  const startDate = startOfWeek(firstDayOfMonth, { weekStartsOn: 1 })
+  
+  // Get the end of the last week
+  const endDate = endOfWeek(lastDayOfMonth, { weekStartsOn: 1 })
+  
+  // Generate all days
+  const allDays = eachDayOfInterval({ start: startDate, end: endDate })
+  
+  return allDays.map(date => ({
     date,
     isCurrentMonth: isSameMonth(date, currentDate.value),
-    isToday: isToday(date),
-    events: getEventsForDate(date)
+    isToday: isToday(date)
   }))
 })
 

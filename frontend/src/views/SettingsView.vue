@@ -4,7 +4,16 @@
     
     <!-- Success Message -->
     <div v-if="showSuccessMessage" class="mb-4 p-4 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded-md">
-      Settings saved successfully!
+      {{ successMessage }}
+    </div>
+
+    <!-- Loading Message -->
+    <div v-if="loadingMessage" class="mb-4 p-4 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-md flex items-center">
+      <svg class="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+      {{ loadingMessage }}
     </div>
 
     <!-- Error Message -->
@@ -108,6 +117,17 @@
           <h2 class="text-xl font-semibold mb-4">User Settings</h2>
           <form @submit.prevent="saveUserSettings" class="space-y-4">
             <div class="form-group">
+              <label for="fullName" class="label">Full Name</label>
+              <input
+                id="fullName"
+                v-model="userSettings.fullName"
+                type="text"
+                class="input"
+                required
+              />
+            </div>
+
+            <div class="form-group">
               <label for="username" class="label">Username</label>
               <input
                 id="username"
@@ -115,6 +135,7 @@
                 type="text"
                 class="input"
                 required
+                :value="authStore.user?.username"
               />
             </div>
             
@@ -126,6 +147,7 @@
                 type="password"
                 class="input"
                 placeholder="Enter new password"
+                :value="authStore.user?.password ? '••••••••' : ''"
               />
               <p class="form-hint">Leave empty to keep current password</p>
             </div>
@@ -187,12 +209,14 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
 const showSuccessMessage = ref(false)
 const errorMessage = ref('')
+const successMessage = ref('')
+const loadingMessage = ref('')
 
 const serverSettings = ref({
   baikalUrl: '',
@@ -204,6 +228,7 @@ const serverSettings = ref({
 })
 
 const userSettings = ref({
+  fullName: '',
   username: '',
   password: ''
 })
@@ -226,7 +251,8 @@ const loadSettings = async () => {
       calendarPath: settings.calendarPath || ''
     }
     userSettings.value = {
-      username: settings.username || '',
+      fullName: authStore.user?.fullName || '',
+      username: authStore.user?.username || '',
       password: ''
     }
     appSettings.value = {
@@ -239,37 +265,81 @@ const loadSettings = async () => {
 }
 
 // Show success message temporarily
-const showSuccess = () => {
+const showSuccess = (message) => {
   showSuccessMessage.value = true
+  successMessage.value = message
   setTimeout(() => {
     showSuccessMessage.value = false
+    successMessage.value = ''
   }, 3000)
 }
 
 // Save settings
 const saveServerSettings = async () => {
   try {
-    await authStore.updateServerSettings({ 
+    setLoading(true, 'Verifying connection...')
+    errorMessage.value = ''
+    
+    const verifyResponse = await fetch('/api/baikal/verify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        serverUrl: serverSettings.value.baikalUrl,
+        username: serverSettings.value.username,
+        password: serverSettings.value.password,
+        addressBookPath: serverSettings.value.addressBookPath,
+        calendarPath: serverSettings.value.calendarPath
+      })
+    })
+    
+    const verifyData = await verifyResponse.json()
+    if (!verifyResponse.ok) {
+      // Check if the error message contains retry information
+      if (verifyData.details?.includes('Attempt')) {
+        setLoading(true, verifyData.details)
+        // Keep showing the retry message
+        return
+      }
+      errorMessage.value = `${verifyData.error}: ${verifyData.details}`
+      return
+    }
+    
+    setLoading(true, 'Saving settings...')
+    // If verification passed, save the settings
+    await authStore.updateServerSettings({
       serverUrl: serverSettings.value.baikalUrl,
-      authType: serverSettings.value.authType,
       username: serverSettings.value.username,
       password: serverSettings.value.password,
       addressBookPath: serverSettings.value.addressBookPath,
       calendarPath: serverSettings.value.calendarPath
     })
-    showSuccess()
+    
+    showSuccess('Server settings saved successfully')
   } catch (error) {
-    errorMessage.value = 'Failed to save server settings: ' + error.message
+    // Check if the error message contains retry information
+    if (error.message?.includes('Attempt')) {
+      setLoading(true, error.message)
+      // Keep showing the retry message
+      return
+    }
+    errorMessage.value = error.response?.data?.details || error.message || 'An unexpected error occurred'
+  } finally {
+    if (!loadingMessage.value?.includes('Attempt')) {
+      setLoading(false)
+    }
   }
 }
 
 const saveUserSettings = async () => {
   try {
     await authStore.updateSettings({
+      fullName: userSettings.value.fullName,
       username: userSettings.value.username,
       ...(userSettings.value.password && { password: userSettings.value.password })
     })
-    showSuccess()
+    showSuccess('User settings saved successfully')
   } catch (error) {
     errorMessage.value = 'Failed to save user settings: ' + error.message
   }
@@ -281,7 +351,7 @@ const saveAppSettings = async () => {
       theme: appSettings.value.theme,
       timeout: appSettings.value.timeout
     })
-    showSuccess()
+    showSuccess('App settings saved successfully')
   } catch (error) {
     errorMessage.value = 'Failed to save app settings: ' + error.message
   }
@@ -290,7 +360,10 @@ const saveAppSettings = async () => {
 // Add test connection function
 const testConnection = async () => {
   try {
-    const response = await fetch('/api/settings/test-baikal', {
+    setLoading(true, 'Testing connection...')
+    errorMessage.value = ''
+    
+    const response = await fetch('/api/baikal/verify', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -298,22 +371,42 @@ const testConnection = async () => {
       body: JSON.stringify({
         serverUrl: serverSettings.value.baikalUrl,
         username: serverSettings.value.username,
-        password: serverSettings.value.password
+        password: serverSettings.value.password,
+        addressBookPath: serverSettings.value.addressBookPath,
+        calendarPath: serverSettings.value.calendarPath
       })
     })
     
     const data = await response.json()
     if (response.ok) {
-      showSuccessMessage.value = true
-      setTimeout(() => {
-        showSuccessMessage.value = false
-      }, 3000)
+      showSuccess('Connection successful! All paths verified.')
     } else {
-      errorMessage.value = data.error || 'Failed to connect to server'
+      // Check if the error message contains retry information
+      if (data.details?.includes('Attempt')) {
+        setLoading(true, data.details)
+        // Keep showing the retry message
+        return
+      }
+      errorMessage.value = `${data.error}: ${data.details}`
     }
   } catch (error) {
-    errorMessage.value = 'Failed to test connection: ' + error.message
+    // Check if the error message contains retry information
+    if (error.message?.includes('Attempt')) {
+      setLoading(true, error.message)
+      // Keep showing the retry message
+      return
+    }
+    errorMessage.value = error.message || 'Failed to test connection'
+  } finally {
+    if (!loadingMessage.value?.includes('Attempt')) {
+      setLoading(false)
+    }
   }
+}
+
+const setLoading = (isLoading, message = '') => {
+  document.body.style.cursor = isLoading ? 'wait' : 'default'
+  loadingMessage.value = message
 }
 
 // Load settings on component mount

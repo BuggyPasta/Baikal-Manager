@@ -1,12 +1,14 @@
 from flask import Blueprint, request, jsonify, session
 from ..utils.user_store import get_user_store
 from ..config.config import Config
+from ..services.baikal_client import BaikalClient
 import caldav
 import os
 import json
 from datetime import datetime, timedelta
 
 bp = Blueprint('settings', __name__, url_prefix='/api/settings')
+baikal_client = BaikalClient()
 
 DEFAULT_APP_SETTINGS = {
     'defaultCalendarView': 'month',
@@ -39,14 +41,52 @@ def save_baikal_settings():
     if error:
         return jsonify(error), error['code']
     
-    if not (data := request.get_json()) or not all(k in data for k in ['serverUrl', 'username', 'password']):
-        return jsonify({'error': 'Missing required fields'}), 400
+    if not (data := request.get_json()):
+        return jsonify({'error': 'No settings provided'}), 400
+
+    # Validate required fields
+    required_fields = ['serverUrl', 'username', 'password', 'addressBookPath', 'calendarPath']
+    if not all(field in data for field in required_fields):
+        return jsonify({
+            'error': 'Missing required fields',
+            'details': f"Required fields: {', '.join(required_fields)}"
+        }), 400
+    
+    # Verify connection before saving
+    success, error_message = baikal_client.verify_connection(data)
+    if not success:
+        return jsonify({
+            'error': 'Connection verification failed',
+            'details': error_message
+        }), 400
     
     try:
+        # Save settings only if connection verification passed
         get_user_store().update_user(user_id, {'baikal_credentials': data})
-        return jsonify({'message': 'Settings saved'})
+        return jsonify({
+            'message': 'Settings saved successfully',
+            'settings': data
+        })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({
+            'error': 'Failed to save settings',
+            'details': str(e)
+        }), 500
+
+@bp.route('/baikal/verify', methods=['POST'])
+def verify_baikal_connection():
+    """Endpoint for explicitly testing the connection"""
+    if not (data := request.get_json()):
+        return jsonify({'error': 'No settings provided'}), 400
+    
+    success, error_message = baikal_client.verify_connection(data)
+    if success:
+        return jsonify({'message': 'Connection successful'})
+    else:
+        return jsonify({
+            'error': 'Connection verification failed',
+            'details': error_message
+        }), 400
 
 @bp.route('/test-baikal', methods=['POST'])
 def test_baikal_connection():
