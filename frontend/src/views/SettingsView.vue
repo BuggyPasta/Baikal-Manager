@@ -286,18 +286,14 @@ const saveServerSettings = async () => {
       password: '[REDACTED]'
     })
     
-    const verifyResponse = await fetch('/api/baikal/verify', {
+    const verifyResponse = await fetch('/api/settings/baikal/verify', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        serverUrl: serverSettings.value.baikalUrl,
-        username: serverSettings.value.username,
-        password: serverSettings.value.password,
-        addressBookPath: serverSettings.value.addressBookPath,
-        calendarPath: serverSettings.value.calendarPath,
-        authType: serverSettings.value.authType
+        ...serverSettings.value,
+        password: '[REDACTED]'
       })
     })
     
@@ -333,12 +329,8 @@ const saveServerSettings = async () => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        serverUrl: serverSettings.value.baikalUrl,
-        username: serverSettings.value.username,
-        password: serverSettings.value.password,
-        addressBookPath: serverSettings.value.addressBookPath,
-        calendarPath: serverSettings.value.calendarPath,
-        authType: serverSettings.value.authType
+        ...serverSettings.value,
+        password: '[REDACTED]'
       })
     })
     
@@ -389,17 +381,14 @@ const testConnection = async () => {
     setLoading(true, 'Testing connection...')
     errorMessage.value = ''
     
-    const response = await fetch('/api/baikal/verify', {
+    const response = await fetch('/api/settings/baikal/verify', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        serverUrl: serverSettings.value.baikalUrl,
-        username: serverSettings.value.username,
-        password: serverSettings.value.password,
-        addressBookPath: serverSettings.value.addressBookPath,
-        calendarPath: serverSettings.value.calendarPath
+        ...serverSettings.value,
+        password: '[REDACTED]'
       })
     })
     

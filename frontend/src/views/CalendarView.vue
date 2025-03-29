@@ -28,11 +28,11 @@
             Today
           </button>
           <div class="flex items-center">
-            <button @click="previousPeriod" class="p-2 flex items-center justify-center">
+            <button @click="previousPeriod" class="p-2 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
               <img :src="arrowPrevious" alt="Previous" class="w-5 h-5 dark:invert" />
             </button>
-            <h2 class="text-xl font-semibold px-4">{{ currentPeriodLabel }}</h2>
-            <button @click="nextPeriod" class="p-2 flex items-center justify-center">
+            <h2 class="text-xl font-semibold px-4 min-w-[200px] text-center">{{ currentPeriodLabel }}</h2>
+            <button @click="nextPeriod" class="p-2 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
               <img :src="arrowNext" alt="Next" class="w-5 h-5 dark:invert" />
             </button>
           </div>
@@ -103,7 +103,8 @@
             :key="day"
             class="p-2 text-center font-semibold border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
           >
-            {{ day }}
+            <div class="text-sm">{{ format(day, 'EEEE') }}</div>
+            <div class="text-xs text-gray-600 dark:text-gray-400">{{ format(day, 'd MMMM') }}</div>
           </div>
 
           <!-- Calendar days -->
