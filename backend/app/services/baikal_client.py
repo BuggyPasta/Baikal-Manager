@@ -101,15 +101,11 @@ class BaikalClient:
                     else:  # default to digest
                         auth = HTTPDigestAuth(settings['username'], settings['password'])
                         
-                    # Create a session to handle authentication
-                    session = requests.Session()
-                    session.auth = auth
-                    
                     client = caldav.DAVClient(
                         url=settings['serverUrl'],
                         username=settings['username'],
                         password=settings['password'],
-                        session=session
+                        auth=auth
                     )
                     
                     # Test principal connection
