@@ -135,8 +135,7 @@ class BaikalClient:
                 url=settings['serverUrl'],
                 username=settings['username'],
                 password=settings['password'],
-                auth=auth,
-                verify=verify_ssl
+                auth=auth
             )
             
             # Test principal connection
