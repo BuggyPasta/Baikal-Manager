@@ -49,6 +49,12 @@ class BaikalClient:
                 response = requests.get(settings['serverUrl'], timeout=5)
                 if response.status_code >= 400:
                     return False, f"Server returned error: {response.status_code}"
+                
+                # Check if we're getting a DAV response
+                content_type = response.headers.get('Content-Type', '').lower()
+                if not any(t in content_type for t in ['dav', 'xml', 'text/plain']):
+                    return False, "Server response doesn't appear to be a CalDAV/CardDAV server. Please check the URL and ensure it points to the DAV endpoint (usually ending in dav.php)"
+                
             except SSLError:
                 return False, "SSL/TLS connection failed. If using local network, ensure URL uses http://"
             except Timeout:

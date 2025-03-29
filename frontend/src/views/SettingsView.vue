@@ -294,7 +294,14 @@ const saveServerSettings = async () => {
       })
     })
     
-    const verifyData = await verifyResponse.json()
+    let verifyData
+    try {
+      verifyData = await verifyResponse.json()
+    } catch (parseError) {
+      errorMessage.value = 'Server returned an invalid response. Please check if the URL points to the correct Baikal DAV endpoint (usually ending in dav.php)'
+      return
+    }
+    
     if (!verifyResponse.ok) {
       // Check if the error message contains retry information
       if (verifyData.details?.includes('Attempt')) {
@@ -377,7 +384,14 @@ const testConnection = async () => {
       })
     })
     
-    const data = await response.json()
+    let data
+    try {
+      data = await response.json()
+    } catch (parseError) {
+      errorMessage.value = 'Server returned an invalid response. Please check if the URL points to the correct Baikal DAV endpoint (usually ending in dav.php)'
+      return
+    }
+    
     if (response.ok) {
       showSuccess('Connection successful! All paths verified.')
     } else {

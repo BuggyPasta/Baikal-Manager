@@ -25,8 +25,8 @@
               name="fullName"
               type="text"
               required
-              class="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white text-center"
-              placeholder="Type your full name here, exactly as you want to see it in the app"
+              class="appearance-none relative block w-[115%] px-3 py-3 text-lg border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 dark:bg-gray-800 dark:border-gray-700 dark:text-white text-center"
+              placeholder="Your full name, exactly as you want to see it in the app"
             >
           </div>
           <div>
@@ -37,7 +37,7 @@
               name="username"
               type="text"
               required
-              class="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white text-center"
+              class="appearance-none relative block w-[115%] px-3 py-3 text-lg border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 dark:bg-gray-800 dark:border-gray-700 dark:text-white text-center"
               placeholder="Username (no spaces allowed)"
             >
           </div>
@@ -49,15 +49,16 @@
               name="password"
               type="password"
               required
-              class="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white text-center"
+              class="appearance-none relative block w-[115%] px-3 py-3 text-lg border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 dark:bg-gray-800 dark:border-gray-700 dark:text-white text-center"
               placeholder="Password (no spaces allowed)"
             >
           </div>
         </div>
 
         <!-- Warning Message -->
-        <div class="text-sm text-yellow-600 dark:text-yellow-400">
-          Please save your login credentials somewhere safe. There is no password recovery process.
+        <div class="text-sm text-yellow-600 dark:text-yellow-400 text-center">
+          <p>Please save your login credentials somewhere safe.</p>
+          <p>There is no password recovery process.</p>
         </div>
 
         <div>
