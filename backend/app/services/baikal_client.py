@@ -133,9 +133,8 @@ class BaikalClient:
             # Create a single client for verification and use
             self.client = caldav.DAVClient(
                 url=settings['serverUrl'],
-                username=settings['username'],
-                password=settings['password'],
-                auth=auth
+                auth=auth,
+                verify=verify_ssl
             )
             
             # Test principal connection
@@ -148,7 +147,7 @@ class BaikalClient:
             abook_path = normalize_url_path(settings['addressBookPath'])
             
             # Get all addressbooks and verify the path exists
-            addressbooks = principal.addressbooks()
+            addressbooks = principal.address_books()
             if not addressbooks:
                 msg = "No address books found on server"
                 logger.error(msg)
@@ -174,7 +173,20 @@ class BaikalClient:
             # Now verify calendar path
             logger.debug(f"Verifying calendar path: {settings['calendarPath']}")
             calendar_path = normalize_url_path(settings['calendarPath'])
-            calendars = principal.calendars()
+            
+            # Get calendar homes first
+            cal_homes = principal.calendar_homes()
+            if not cal_homes:
+                msg = "No calendar homes found on server"
+                logger.error(msg)
+                self.client = None
+                return False, msg
+                
+            # Get all calendars from all homes
+            calendars = []
+            for home in cal_homes:
+                calendars.extend(home.calendars())
+            
             calendar_urls = [str(cal.url) for cal in calendars]
             
             if not calendar_urls:
