@@ -46,10 +46,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy backend code
 COPY backend/ .
 
-# Create non-root user and set permissions
+# Create non-root user
 RUN useradd -m -u 1000 appuser && \
-    chown -R appuser:appuser /app /data && \
-    chmod -R 755 /data && \
+    chown -R appuser:appuser /app && \
     chmod -R 755 /app/backend/app/static
 
 # Create entrypoint script
@@ -57,12 +56,11 @@ COPY <<'EOF' /usr/local/bin/docker-entrypoint.sh
 #!/bin/bash
 set -e
 
-# Create required directories
+# Create required directories without changing ownership
 mkdir -p /data/logs /data/users
 
-# Fix permissions at runtime
-chown -R appuser:appuser /data
-chmod -R 755 /data
+# Make directories writable by the group
+chmod 775 /data /data/logs /data/users
 
 # Switch to appuser and run the application
 exec gosu appuser "$@"
