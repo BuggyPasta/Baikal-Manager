@@ -2,6 +2,7 @@ from typing import Dict, Tuple, Optional
 import caldav
 from urllib.parse import urlparse
 import requests
+from requests.auth import HTTPDigestAuth, HTTPBasicAuth
 from requests.exceptions import ConnectionError, Timeout, SSLError
 import time
 from functools import wraps
@@ -90,13 +91,20 @@ class BaikalClient:
                 print("Attempting CalDAV connection...")  # Direct console output
                 logger.debug("Attempting CalDAV connection...")
                 try:
-                    auth_type = settings.get('authType', 'basic').lower()
+                    auth_type = settings.get('authType', os.getenv('BAIKAL_AUTH_TYPE', 'basic')).lower()
                     logger.debug(f"Using authentication type: {auth_type}")
                     
+                    # Create appropriate auth handler based on type
+                    if auth_type == 'digest':
+                        auth = HTTPDigestAuth(settings['username'], settings['password'])
+                    else:  # default to basic
+                        auth = HTTPBasicAuth(settings['username'], settings['password'])
+                        
                     client = caldav.DAVClient(
                         url=settings['serverUrl'],
                         username=settings['username'],
-                        password=settings['password']
+                        password=settings['password'],
+                        auth=auth
                     )
                     
                     # Test principal connection
