@@ -56,16 +56,18 @@ COPY <<'EOF' /usr/local/bin/docker-entrypoint.sh
 #!/bin/bash
 set -e
 
-# Ensure data directory exists and has correct permissions
-if [ ! -d "/data" ]; then
-    mkdir -p /data
-fi
+# Function to setup directories and permissions
+setup_directories() {
+    # Create directories if they don't exist
+    mkdir -p /data /data/logs /data/users
 
-# Always ensure these directories exist
-mkdir -p /data/logs /data/users
+    # Set ownership and permissions
+    chown -R appuser:appuser /data /data/logs /data/users
+    chmod -R 755 /data /data/logs /data/users
+}
 
-# Set permissions that allow writing
-chmod 777 /data /data/logs /data/users
+# Run setup as root
+setup_directories
 
 # Switch to appuser and run the application
 exec gosu appuser "$@"

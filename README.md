@@ -148,7 +148,7 @@ A web-based, self-hosted app for managing Baikal CalDAV/CardDAV contacts and cal
    - The timezone is set to Europe/London by default
    - Security features are enabled by default
    - Container capabilities are restricted for better security
-   - The container runs as user ID 1000 for security
+   - The application runs as a non-root user for security
 
 4. Click "Deploy" and wait until everything is pulled from the GitHub repo.
 
