@@ -1,4 +1,14 @@
-# Use an official Python runtime as a parent image
+# Stage 1: Build Frontend
+FROM node:20-slim as frontend-builder
+
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm install
+
+COPY frontend/ .
+RUN npm run build
+
+# Stage 2: Final Image
 FROM python:3.11-slim-bookworm
 
 # Set working directory
@@ -12,7 +22,6 @@ ENV PYTHONUNBUFFERED=1 \
     FLASK_STATIC_FOLDER=/app/backend/app/static \
     APP_NAME=Baikal-Manager \
     DATA_DIR=/data \
-    NODE_ENV=production \
     VITE_APP_NAME=Baikal-Manager
 
 # Install minimal system dependencies
@@ -21,34 +30,12 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     python3-dev \
     curl \
-    gnupg \
-    ca-certificates \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p /data/logs /data/users
+    && mkdir -p /data/logs /data/users /app/backend/app/static
 
-# Install Node.js 20
-RUN mkdir -p /etc/apt/keyrings && \
-    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list && \
-    apt-get update && apt-get install -y nodejs && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-# Copy frontend files and install dependencies
-COPY frontend/package*.json ./frontend/
-WORKDIR /app/frontend
-RUN npm install
-
-# Copy all frontend files including config files
-COPY frontend/ .
-
-# Build frontend
-RUN npm run build
-
-# Move built frontend to backend static directory
-RUN mkdir -p /app/backend/app/static && \
-    cp -r dist/* /app/backend/app/static/
+# Copy built frontend from previous stage
+COPY --from=frontend-builder /app/frontend/dist /app/backend/app/static/
 
 # Install backend dependencies
 WORKDIR /app
@@ -61,7 +48,7 @@ COPY backend/ .
 # Create non-root user and set permissions
 RUN useradd -m appuser && \
     chown -R appuser:appuser /app /data && \
-    chmod -R 755 /data/logs /data/users
+    chmod -R 755 /data/logs /data/users /app/backend/app/static
 
 # Switch to non-root user
 USER appuser
