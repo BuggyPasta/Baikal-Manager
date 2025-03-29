@@ -37,7 +37,7 @@ RUN mkdir -p /etc/apt/keyrings && \
 # Copy frontend files and install dependencies
 COPY frontend/package*.json ./frontend/
 WORKDIR /app/frontend
-RUN npm ci --only=production
+RUN npm install --only=production
 
 # Build frontend
 COPY frontend/ .
