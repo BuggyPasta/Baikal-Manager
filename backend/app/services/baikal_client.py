@@ -146,24 +146,22 @@ class BaikalClient:
             logger.debug(f"Verifying address book path: {settings['addressBookPath']}")
             abook_path = normalize_url_path(settings['addressBookPath'])
             
-            # Get all addressbooks and verify the path exists
-            addressbooks = principal.address_books()
-            if not addressbooks:
-                msg = "No address books found on server"
+            # Direct HTTP request to verify address book exists
+            abook_url = urljoin(settings['serverUrl'], settings['addressBookPath'].lstrip('/'))
+            response = requests.request('PROPFIND', abook_url, auth=auth, verify=verify_ssl, headers={'Depth': '0'})
+            
+            if response.status_code == 404:
+                msg = f"Address book not found at: {settings['addressBookPath']}"
                 logger.error(msg)
                 self.client = None
                 return False, msg
-                
-            # Check if the requested path exists
-            abook_found = False
-            for book in addressbooks:
-                book_path = normalize_url_path(urlparse(str(book.url)).path)
-                if book_path == abook_path or book_path + '/' == abook_path or book_path == abook_path + '/':
-                    abook_found = True
-                    break
-                    
-            if not abook_found:
-                msg = f"Address book not found at: {settings['addressBookPath']}"
+            elif response.status_code == 401:
+                msg = "Authentication failed for address book access"
+                logger.error(msg)
+                self.client = None
+                return False, msg
+            elif response.status_code >= 400:
+                msg = f"Error accessing address book: HTTP {response.status_code}"
                 logger.error(msg)
                 self.client = None
                 return False, msg
