@@ -1,189 +1,232 @@
 # Create the CalendarView component
 <template>
-  <div class="container mx-auto px-4 py-8">
-    <!-- View Controls -->
-    <div class="flex justify-between items-center mb-6">
-      <div class="flex items-center space-x-4">
-        <button
-          v-for="view in ['month', 'week', 'day', 'list']"
-          :key="view"
-          @click="currentView = view"
-          :class="[
-            'px-4 py-2 rounded-md text-sm font-medium',
-            currentView === view
-              ? 'bg-blue-600 text-white'
-              : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-          ]"
-        >
-          {{ view.charAt(0).toUpperCase() + view.slice(1) }}
-        </button>
-      </div>
-
-      <div v-if="currentView !== 'list'" class="flex items-center space-x-4">
-        <button
-          class="btn-secondary"
-          @click="goToToday"
-        >
-          Today
-        </button>
-        <div class="flex items-center space-x-2">
+  <div class="calendar-view h-full flex flex-col">
+    <!-- Calendar Header -->
+    <div class="calendar-header">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center space-x-4">
           <button
-            class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center"
-            @click="previousPeriod"
+            v-for="view in ['month', 'week', 'day', 'list']"
+            :key="view"
+            @click="currentView = view"
+            :class="[
+              'px-4 py-2 rounded-md text-sm font-medium',
+              currentView === view
+                ? 'bg-blue-600 text-white'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+            ]"
           >
-            <span class="sr-only">Previous</span>
-            <img :src="arrowPrevious" alt="Previous" class="w-5 h-5">
-          </button>
-          <h2 class="text-xl font-semibold">{{ currentPeriodLabel }}</h2>
-          <button
-            class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center"
-            @click="nextPeriod"
-          >
-            <span class="sr-only">Next</span>
-            <img :src="arrowNext" alt="Next" class="w-5 h-5">
+            {{ view.charAt(0).toUpperCase() + view.slice(1) }}
           </button>
         </div>
-      </div>
-    </div>
 
-    <!-- List View -->
-    <div v-if="currentView === 'list'" class="bg-white dark:bg-gray-800 rounded-lg shadow">
-      <div class="divide-y divide-gray-200 dark:divide-gray-700">
-        <div
-          v-for="event in sortedEvents"
-          :key="event.id"
-          @click="openEventModal(event)"
-          class="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
-        >
-          <div class="flex justify-between items-start">
-            <div>
-              <h3 class="text-lg font-medium text-gray-900 dark:text-white">
-                {{ event.title }}
-              </h3>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ formatEventDateTime(event) }}
-              </p>
-              <p v-if="event.description" class="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                {{ event.description }}
-              </p>
+        <div v-if="currentView !== 'list'" class="flex items-center space-x-4">
+          <button
+            class="btn-secondary"
+            @click="goToToday"
+          >
+            Today
+          </button>
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center space-x-4">
+              <button @click="previousPeriod" class="p-2 flex items-center">
+                <img src="@/assets/arrow-previous.svg" alt="Previous" class="w-5 h-5 dark:invert" />
+              </button>
+              <h2 class="text-xl font-semibold">{{ currentPeriodLabel }}</h2>
+              <button @click="nextPeriod" class="p-2 flex items-center">
+                <img src="@/assets/arrow-next.svg" alt="Next" class="w-5 h-5 dark:invert" />
+              </button>
             </div>
-            <div
-              :class="[
-                'w-3 h-3 rounded-full',
-                `bg-${event.color || 'blue'}-500`
-              ]"
-            ></div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Loading State -->
-    <div v-if="loading" class="flex justify-center items-center h-96">
-      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-    </div>
-
-    <!-- Error State -->
-    <div v-else-if="error" class="bg-red-50 dark:bg-red-900 p-4 rounded-lg mb-8">
-      <p class="text-red-800 dark:text-red-200">{{ error }}</p>
-      <button
-        @click="fetchEvents"
-        class="mt-2 text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200"
-      >
-        Try again
-      </button>
-    </div>
-
-    <!-- Calendar Grid -->
-    <div v-else class="bg-white dark:bg-gray-800 rounded-lg shadow">
-      <!-- Month View -->
-      <div v-if="currentView === 'month'" class="grid grid-cols-7 gap-0 border border-gray-200 dark:border-gray-700">
-        <!-- Day Headers -->
-        <div
-          v-for="day in weekDays"
-          :key="day"
-          class="p-2 text-center text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 border-b border-r border-gray-200 dark:border-gray-700"
-        >
-          {{ format(day, 'EEE') }}
-          <div class="text-xs">{{ format(day, 'd MMM') }}</div>
+    <!-- Calendar Content -->
+    <div class="calendar-content">
+      <!-- List View -->
+      <div v-if="currentView === 'list'" class="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div class="divide-y divide-gray-200 dark:divide-gray-700">
+          <div
+            v-for="event in sortedEvents"
+            :key="event.id"
+            @click="openEventModal(event)"
+            class="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <div class="flex justify-between items-start">
+              <div>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                  {{ event.title }}
+                </h3>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  {{ formatEventDateTime(event) }}
+                </p>
+                <p v-if="event.description" class="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                  {{ event.description }}
+                </p>
+              </div>
+              <div
+                :class="[
+                  'w-3 h-3 rounded-full',
+                  `bg-${event.color || 'blue'}-500`
+                ]"
+              ></div>
+            </div>
+          </div>
         </div>
-        
-        <!-- Calendar Days -->
-        <div
-          v-for="(day, index) in monthDays"
-          :key="index"
-          :class="[
-            'min-h-[120px] p-2 border-b border-r border-gray-200 dark:border-gray-700',
-            day.isCurrentMonth ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-700',
-            day.isToday ? 'bg-blue-50 dark:bg-blue-900/30 border-2 border-blue-600' : ''
-          ]"
+      </div>
+
+      <!-- Loading State -->
+      <div v-if="loading" class="flex justify-center items-center h-96">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+
+      <!-- Error State -->
+      <div v-else-if="error" class="bg-red-50 dark:bg-red-900 p-4 rounded-lg mb-8">
+        <p class="text-red-800 dark:text-red-200">{{ error }}</p>
+        <button
+          @click="fetchEvents"
+          class="mt-2 text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200"
         >
-          <div class="flex justify-between items-center mb-1">
-            <span
-              :class="[
-                'text-sm font-medium',
-                day.isCurrentMonth
-                  ? 'text-gray-900 dark:text-white'
-                  : 'text-gray-400 dark:text-gray-500'
-              ]"
-            >
-              {{ day.date.getDate() }}
-            </span>
-            <button
-              v-if="day.isCurrentMonth"
-              @click="openNewEventModal(day.date)"
-              class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
-            </button>
+          Try again
+        </button>
+      </div>
+
+      <!-- Calendar Grid -->
+      <div v-else class="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <!-- Month View -->
+        <div v-if="currentView === 'month'" class="grid grid-cols-7 gap-0 border border-gray-200 dark:border-gray-700">
+          <!-- Day Headers -->
+          <div
+            v-for="day in weekDays"
+            :key="day"
+            class="p-2 text-center text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 border-b border-r border-gray-200 dark:border-gray-700"
+          >
+            {{ format(day, 'EEE') }}
+            <div class="text-xs">{{ format(day, 'd MMM') }}</div>
           </div>
           
-          <!-- Events -->
-          <div class="space-y-1">
-            <div
-              v-for="event in day.events"
-              :key="event.id"
-              @click="openEventModal(event)"
-              class="px-2 py-1 text-xs rounded-md cursor-pointer truncate"
-              :class="[
-                event.color ? `bg-${event.color}-100 text-${event.color}-800` : 'bg-blue-100 text-blue-800',
-                `dark:bg-${event.color || 'blue'}-800 dark:text-${event.color || 'blue'}-100`
-              ]"
-            >
-              {{ event.title }}
+          <!-- Calendar Days -->
+          <div
+            v-for="(day, index) in monthDays"
+            :key="index"
+            :class="[
+              'min-h-[120px] p-2 border border-gray-200 dark:border-gray-700',
+              day.isCurrentMonth ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900',
+              day.isToday ? 'bg-blue-50 dark:bg-blue-900/30' : ''
+            ]"
+          >
+            <div class="flex justify-between items-center mb-1">
+              <span
+                :class="[
+                  'text-sm font-medium',
+                  day.isCurrentMonth
+                    ? 'text-gray-900 dark:text-white'
+                    : 'text-gray-400 dark:text-gray-500'
+                ]"
+              >
+                {{ day.date.getDate() }}
+              </span>
+              <button
+                v-if="day.isCurrentMonth"
+                @click="openNewEventModal(day.date)"
+                class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+            </div>
+            
+            <!-- Events -->
+            <div class="space-y-1">
+              <div
+                v-for="event in day.events"
+                :key="event.id"
+                @click="openEventModal(event)"
+                class="px-2 py-1 text-xs rounded-md cursor-pointer truncate"
+                :class="[
+                  event.color ? `bg-${event.color}-100 text-${event.color}-800` : 'bg-blue-100 text-blue-800',
+                  `dark:bg-${event.color || 'blue'}-800 dark:text-${event.color || 'blue'}-100`
+                ]"
+              >
+                {{ event.title }}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Week View -->
-      <div v-else-if="currentView === 'week'" class="calendar-grid grid-cols-8">
-        <!-- Time Column -->
-        <div class="calendar-header-cell"></div>
-        <div
-          v-for="day in weekDays"
-          :key="format(day, 'yyyy-MM-dd')"
-          class="calendar-header-cell"
-        >
-          {{ format(day, 'EEE, MMM d') }}
+        <!-- Week View -->
+        <div v-else-if="currentView === 'week'" class="calendar-grid grid-cols-8">
+          <!-- Time Column -->
+          <div class="calendar-header-cell"></div>
+          <div
+            v-for="day in weekDays"
+            :key="format(day, 'yyyy-MM-dd')"
+            class="calendar-header-cell"
+          >
+            {{ format(day, 'EEE, MMM d') }}
+          </div>
+
+          <!-- Time slots -->
+          <template v-for="hour in 24" :key="hour">
+            <div class="calendar-time-cell">
+              {{ formatHour(hour - 1) }}
+            </div>
+            <template v-for="day in weekDays" :key="`${hour}-${format(day, 'yyyy-MM-dd')}`">
+              <div class="calendar-week-cell relative">
+                <!-- First 30 minutes -->
+                <div class="h-[30px] relative border-b border-gray-100 dark:border-gray-700">
+                  <div
+                    v-for="event in getEventsForTimeSlot(day, hour - 1, 0)"
+                    :key="event.id"
+                    @click="openEventModal(event)"
+                    class="absolute inset-x-1 rounded-md px-2 py-1 text-xs cursor-pointer overflow-hidden"
+                    :class="getEventClasses(event)"
+                    :style="getEventStyles(event)"
+                  >
+                    {{ event.title }}
+                  </div>
+                </div>
+                <!-- Second 30 minutes -->
+                <div class="h-[30px] relative">
+                  <div
+                    v-for="event in getEventsForTimeSlot(day, hour - 1, 30)"
+                    :key="event.id"
+                    @click="openEventModal(event)"
+                    class="absolute inset-x-1 rounded-md px-2 py-1 text-xs cursor-pointer overflow-hidden"
+                    :class="getEventClasses(event)"
+                    :style="getEventStyles(event)"
+                  >
+                    {{ event.title }}
+                  </div>
+                </div>
+              </div>
+            </template>
+          </template>
         </div>
 
-        <!-- Time slots -->
-        <template v-for="hour in 24" :key="hour">
-          <div class="calendar-time-cell">
-            {{ formatHour(hour - 1) }}
+        <!-- Day View -->
+        <div v-else-if="currentView === 'day'" class="grid grid-cols-[100px_1fr] border border-gray-200 dark:border-gray-700">
+          <!-- Header -->
+          <div class="calendar-header-cell border-r border-gray-200 dark:border-gray-700">Time</div>
+          <div class="calendar-header-cell">
+            {{ format(currentDate, 'EEEE, d MMMM yyyy') }}
           </div>
-          <template v-for="day in weekDays" :key="`${hour}-${format(day, 'yyyy-MM-dd')}`">
+
+          <!-- Time slots -->
+          <template v-for="hour in 24" :key="hour">
+            <!-- First 30 minutes -->
+            <div class="calendar-time-cell border-r border-gray-200 dark:border-gray-700">
+              {{ formatHour(hour - 1) }}
+            </div>
             <div class="calendar-week-cell relative">
-              <!-- First 30 minutes -->
               <div class="h-[30px] relative border-b border-gray-100 dark:border-gray-700">
                 <div
-                  v-for="event in getEventsForTimeSlot(day, hour - 1, 0)"
+                  v-for="event in getEventsForTimeSlot(currentDate, hour - 1, 0)"
                   :key="event.id"
                   @click="openEventModal(event)"
-                  class="absolute inset-x-1 rounded-md px-2 py-1 text-xs cursor-pointer overflow-hidden"
+                  class="absolute inset-x-1 rounded-md px-2 py-1 text-sm cursor-pointer overflow-hidden"
                   :class="getEventClasses(event)"
                   :style="getEventStyles(event)"
                 >
@@ -193,10 +236,10 @@
               <!-- Second 30 minutes -->
               <div class="h-[30px] relative">
                 <div
-                  v-for="event in getEventsForTimeSlot(day, hour - 1, 30)"
+                  v-for="event in getEventsForTimeSlot(currentDate, hour - 1, 30)"
                   :key="event.id"
                   @click="openEventModal(event)"
-                  class="absolute inset-x-1 rounded-md px-2 py-1 text-xs cursor-pointer overflow-hidden"
+                  class="absolute inset-x-1 rounded-md px-2 py-1 text-sm cursor-pointer overflow-hidden"
                   :class="getEventClasses(event)"
                   :style="getEventStyles(event)"
                 >
@@ -205,51 +248,7 @@
               </div>
             </div>
           </template>
-        </template>
-      </div>
-
-      <!-- Day View -->
-      <div v-else-if="currentView === 'day'" class="grid grid-cols-[100px_1fr] border border-gray-200 dark:border-gray-700">
-        <!-- Header -->
-        <div class="calendar-header-cell border-r border-gray-200 dark:border-gray-700">Time</div>
-        <div class="calendar-header-cell">
-          {{ format(currentDate, 'EEEE, d MMMM yyyy') }}
         </div>
-
-        <!-- Time slots -->
-        <template v-for="hour in 24" :key="hour">
-          <!-- First 30 minutes -->
-          <div class="calendar-time-cell border-r border-gray-200 dark:border-gray-700">
-            {{ formatHour(hour - 1) }}
-          </div>
-          <div class="calendar-week-cell relative">
-            <div class="h-[30px] relative border-b border-gray-100 dark:border-gray-700">
-              <div
-                v-for="event in getEventsForTimeSlot(currentDate, hour - 1, 0)"
-                :key="event.id"
-                @click="openEventModal(event)"
-                class="absolute inset-x-1 rounded-md px-2 py-1 text-sm cursor-pointer overflow-hidden"
-                :class="getEventClasses(event)"
-                :style="getEventStyles(event)"
-              >
-                {{ event.title }}
-              </div>
-            </div>
-            <!-- Second 30 minutes -->
-            <div class="h-[30px] relative">
-              <div
-                v-for="event in getEventsForTimeSlot(currentDate, hour - 1, 30)"
-                :key="event.id"
-                @click="openEventModal(event)"
-                class="absolute inset-x-1 rounded-md px-2 py-1 text-sm cursor-pointer overflow-hidden"
-                :class="getEventClasses(event)"
-                :style="getEventStyles(event)"
-              >
-                {{ event.title }}
-              </div>
-            </div>
-          </div>
-        </template>
       </div>
     </div>
 

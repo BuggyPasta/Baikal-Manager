@@ -75,7 +75,7 @@
               placeholder="/addressbooks/username/default/"
               required
             />
-            <p class="form-hint">Example: /addressbooks/john/contacts/</p>
+            <p class="form-hint">e.g /addressbooks/YOUR_BAIKAL_USERNAME/default/</p>
           </div>
 
           <div class="form-group">
@@ -88,7 +88,7 @@
               placeholder="/calendars/username/default/"
               required
             />
-            <p class="form-hint">Example: /calendars/john/events/</p>
+            <p class="form-hint">e.g /calendars/YOUR_BAIKAL_USERNAME/default/</p>
           </div>
           
           <div class="flex space-x-4">
@@ -249,8 +249,8 @@ const showSuccess = () => {
 // Save settings
 const saveServerSettings = async () => {
   try {
-    await authStore.updateSettings({ 
-      baikalUrl: serverSettings.value.baikalUrl,
+    await authStore.updateServerSettings({ 
+      serverUrl: serverSettings.value.baikalUrl,
       authType: serverSettings.value.authType,
       username: serverSettings.value.username,
       password: serverSettings.value.password,

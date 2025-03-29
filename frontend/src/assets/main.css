@@ -139,6 +139,14 @@
     @apply bg-blue-50 dark:bg-blue-900/20;
   }
 
+  .calendar-header {
+    @apply bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 sticky top-0 z-50;
+  }
+
+  .calendar-content {
+    @apply relative z-0 overflow-auto flex-1;
+  }
+
   .calendar-header-cell {
     @apply p-2 text-center font-semibold border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800;
   }
