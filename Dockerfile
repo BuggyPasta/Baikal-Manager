@@ -33,7 +33,7 @@ RUN apt-get update && apt-get install -y \
     gosu \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p /data/logs /data/users /app/backend/app/static
+    && mkdir -p /app/backend/app/static
 
 # Copy built frontend from previous stage
 COPY --from=frontend-builder /app/frontend/dist /app/backend/app/static/
@@ -56,11 +56,16 @@ COPY <<'EOF' /usr/local/bin/docker-entrypoint.sh
 #!/bin/bash
 set -e
 
-# Create required directories without changing ownership
+# Ensure data directory exists and has correct permissions
+if [ ! -d "/data" ]; then
+    mkdir -p /data
+fi
+
+# Always ensure these directories exist
 mkdir -p /data/logs /data/users
 
-# Make directories writable by the group
-chmod 775 /data /data/logs /data/users
+# Set permissions that allow writing
+chmod 777 /data /data/logs /data/users
 
 # Switch to appuser and run the application
 exec gosu appuser "$@"

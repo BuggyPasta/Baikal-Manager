@@ -34,7 +34,7 @@ A web-based, self-hosted app for managing Baikal CalDAV/CardDAV contacts and cal
    #######################
 
    # The directory on your host machine where all data will be stored
-   # This must be a valid path with write permissions
+   # This directory will be created automatically if it doesn't exist
    HOST_DATA_DIR=/path/to/your/data/directory
 
    # The URL of your Baikal server
@@ -116,6 +116,7 @@ A web-based, self-hosted app for managing Baikal CalDAV/CardDAV contacts and cal
          context: https://github.com/BuggyPasta/Baikal-Manager.git
          dockerfile: Dockerfile
        container_name: baikal-manager
+       user: "1000:1000"
        ports:
          - "3000:3000"
        volumes:
@@ -143,10 +144,11 @@ A web-based, self-hosted app for managing Baikal CalDAV/CardDAV contacts and cal
 
    Note: 
    - The volume mount uses the `HOST_DATA_DIR` variable from your `.env` file
+   - All required directories are created automatically on first launch
    - The timezone is set to Europe/London by default
    - Security features are enabled by default
    - Container capabilities are restricted for better security
-   - All necessary permissions are handled automatically
+   - The container runs as user ID 1000 for security
 
 4. Click "Deploy" and wait until everything is pulled from the GitHub repo.
 
@@ -157,9 +159,11 @@ A web-based, self-hosted app for managing Baikal CalDAV/CardDAV contacts and cal
 The application runs on port 3000 by default and is accessible only within your LAN.
 
 Data Storage:
-- All data is stored in the directory specified by `HOST_DATA_DIR`
+- All data is stored in the directory specified by `HOST_DATA_DIR` (created automatically)
+- The following subdirectories are created automatically on first launch:
+  * `logs/` - Application logs
+  * `users/` - User data and credentials (encrypted)
 - User data and credentials are encrypted
-- Logs are stored in `HOST_DATA_DIR/logs`
 - Encryption keys are stored in `HOST_DATA_DIR/encryption.key`
 
 Security Features:
@@ -171,6 +175,7 @@ Security Features:
   * No new privileges
   * Dropped capabilities
   * Minimal required capabilities only
+  * Non-root user execution
 
 ## Usage
 
