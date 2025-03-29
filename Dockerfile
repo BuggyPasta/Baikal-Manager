@@ -37,11 +37,12 @@ RUN mkdir -p /etc/apt/keyrings && \
 # Copy frontend files and install dependencies
 COPY frontend/package*.json ./frontend/
 WORKDIR /app/frontend
-RUN npm install && \
-    npm install -g vite
+RUN npm install
+
+# Copy all frontend files including config files
+COPY frontend/ .
 
 # Build frontend
-COPY frontend/ .
 RUN npm run build
 
 # Move built frontend to backend static directory
