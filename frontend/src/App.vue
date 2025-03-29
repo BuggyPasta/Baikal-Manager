@@ -75,7 +75,7 @@ const authStore = useAuthStore()
 
 const isMobileMenuOpen = ref(false)
 const isDarkMode = ref(false)
-const appName = import.meta.env.VITE_APP_NAME || 'Baikal-Manager'
+const appName = 'Baikal Manager'
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const userFullName = computed(() => authStore.userFullName)

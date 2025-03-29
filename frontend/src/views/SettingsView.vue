@@ -66,27 +66,29 @@
           </div>
 
           <div class="form-group">
-            <label for="addressBookPath" class="label">Address Book Path (Optional)</label>
+            <label for="addressBookPath" class="label">Address Book Path</label>
             <input
               id="addressBookPath"
               v-model="serverSettings.addressBookPath"
               type="text"
               class="input"
               placeholder="/addressbooks/username/default/"
+              required
             />
-            <p class="form-hint">Leave empty to use default path: /addressbooks/username/default/</p>
+            <p class="form-hint">Example: /addressbooks/john/contacts/</p>
           </div>
 
           <div class="form-group">
-            <label for="calendarPath" class="label">Calendar Path (Optional)</label>
+            <label for="calendarPath" class="label">Calendar Path</label>
             <input
               id="calendarPath"
               v-model="serverSettings.calendarPath"
               type="text"
               class="input"
               placeholder="/calendars/username/default/"
+              required
             />
-            <p class="form-hint">Leave empty to use default path: /calendars/username/default/</p>
+            <p class="form-hint">Example: /calendars/john/events/</p>
           </div>
           
           <div class="flex space-x-4">

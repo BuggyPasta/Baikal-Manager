@@ -28,19 +28,19 @@
         </button>
         <div class="flex items-center space-x-2">
           <button
-            class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center w-8 h-8"
+            class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center"
             @click="previousPeriod"
           >
             <span class="sr-only">Previous</span>
-            &lt;
+            <img :src="arrowPrevious" alt="Previous" class="w-5 h-5">
           </button>
           <h2 class="text-xl font-semibold">{{ currentPeriodLabel }}</h2>
           <button
-            class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center w-8 h-8"
+            class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center"
             @click="nextPeriod"
           >
             <span class="sr-only">Next</span>
-            &gt;
+            <img :src="arrowNext" alt="Next" class="w-5 h-5">
           </button>
         </div>
       </div>
@@ -115,7 +115,7 @@
           :class="[
             'min-h-[120px] p-2 border-b border-r border-gray-200 dark:border-gray-700',
             day.isCurrentMonth ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-700',
-            day.isToday ? 'border-2 border-blue-600' : ''
+            day.isToday ? 'bg-blue-50 dark:bg-blue-900/30 border-2 border-blue-600' : ''
           ]"
         >
           <div class="flex justify-between items-center mb-1">
@@ -213,7 +213,7 @@
         <!-- Header -->
         <div class="calendar-header-cell border-r border-gray-200 dark:border-gray-700">Time</div>
         <div class="calendar-header-cell">
-          {{ format(currentDate, 'EEEE, MMM d') }}
+          {{ format(currentDate, 'EEEE, d MMMM yyyy') }}
         </div>
 
         <!-- Time slots -->
@@ -279,6 +279,8 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { format, addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, parseISO, compareAsc, setMinutes, setHours, addMinutes, isWithinInterval, isBefore, isAfter, differenceInMinutes } from 'date-fns'
 import EventModal from '@/components/EventModal.vue'
+import arrowPrevious from '@/assets/icons/arrow-previous.svg'
+import arrowNext from '@/assets/icons/arrow-next.svg'
 
 // View options
 const views = ['month', 'week', 'day', 'list']
@@ -295,7 +297,7 @@ const selectedDate = ref(null)
 
 // Week days array for headers
 const weekDays = computed(() => {
-  const start = startOfWeek(currentDate.value)
+  const start = startOfWeek(currentDate.value, { weekStartsOn: 1 })
   return Array.from({ length: 7 }, (_, i) => addDays(start, i))
 })
 
@@ -304,11 +306,11 @@ const currentPeriodLabel = computed(() => {
   if (currentView.value === 'month') {
     return format(currentDate.value, 'MMMM yyyy')
   } else if (currentView.value === 'week') {
-    const start = startOfWeek(currentDate.value)
-    const end = endOfWeek(currentDate.value)
+    const start = startOfWeek(currentDate.value, { weekStartsOn: 1 })
+    const end = endOfWeek(currentDate.value, { weekStartsOn: 1 })
     return `${format(start, 'MMM d')} - ${format(end, 'MMM d, yyyy')}`
   } else {
-    return format(currentDate.value, 'EEEE, MMMM d, yyyy')
+    return format(currentDate.value, 'EEEE, d MMMM yyyy')
   }
 })
 

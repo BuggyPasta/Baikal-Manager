@@ -3,7 +3,7 @@ from urllib.parse import urlparse
 
 def validate_baikal_settings(settings: Dict[str, Any]) -> str:
     """Validate Baikal server settings. Returns error message if invalid, None if valid."""
-    if not all(settings.get(field) for field in ['serverUrl', 'username', 'password']):
+    if not all(settings.get(field) for field in ['serverUrl', 'username', 'password', 'addressBookPath', 'calendarPath']):
         return "Missing required fields"
     
     try:
@@ -12,6 +12,13 @@ def validate_baikal_settings(settings: Dict[str, Any]) -> str:
             return "Invalid server URL"
     except:
         return "Invalid server URL"
+    
+    # Validate paths
+    if not settings['addressBookPath'].startswith('/addressbooks/'):
+        return "Address Book Path must start with /addressbooks/"
+        
+    if not settings['calendarPath'].startswith('/calendars/'):
+        return "Calendar Path must start with /calendars/"
     
     return None
 
