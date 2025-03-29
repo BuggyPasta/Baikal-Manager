@@ -146,61 +146,35 @@ class BaikalClient:
             logger.debug(f"Verifying address book path: {settings['addressBookPath']}")
             abook_path = normalize_url_path(settings['addressBookPath'])
             
-            # First verify the addressbooks collection exists
-            base_url = settings['serverUrl']
-            addressbooks_url = urljoin(base_url, 'addressbooks/')
+            # Use principal to get the root URL and verify paths
+            root_url = str(principal.url)
+            logger.debug(f"Principal root URL: {root_url}")
             
+            # Verify addressbook path exists by checking if we can make a client for it
             try:
-                # Check if addressbooks collection exists
-                response = requests.request('PROPFIND', addressbooks_url, 
-                                         auth=auth, 
-                                         verify=verify_ssl,
-                                         headers={'Depth': '0', 'Content-Type': 'application/xml'},
-                                         timeout=10)
+                abook_url = urljoin(settings['serverUrl'], settings['addressBookPath'].lstrip('/'))
+                test_client = caldav.DAVClient(url=abook_url, auth=auth, ssl_verify_cert=verify_ssl)
+                response = test_client.request('GET')
                 
-                if response.status_code == 404:
-                    msg = "Address books collection not found on server"
-                    logger.error(msg)
-                    self.client = None
-                    return False, msg
-                elif response.status_code == 401:
-                    msg = "Authentication failed for address books access"
-                    logger.error(msg)
-                    self.client = None
-                    return False, msg
-                elif response.status_code >= 400:
-                    msg = f"Error accessing address books: HTTP {response.status_code}"
-                    logger.error(msg)
-                    self.client = None
-                    return False, msg
-                
-                # Now check if the specific address book exists
-                abook_url = urljoin(base_url, settings['addressBookPath'].lstrip('/'))
-                response = requests.request('PROPFIND', abook_url, 
-                                         auth=auth, 
-                                         verify=verify_ssl,
-                                         headers={'Depth': '0', 'Content-Type': 'application/xml'},
-                                         timeout=10)
-                
-                if response.status_code == 404:
+                if response.status == 404:
                     msg = f"Address book not found at: {settings['addressBookPath']}"
                     logger.error(msg)
                     self.client = None
                     return False, msg
-                elif response.status_code == 401:
+                elif response.status == 401:
                     msg = "Authentication failed for address book access"
                     logger.error(msg)
                     self.client = None
                     return False, msg
-                elif response.status_code >= 400:
-                    msg = f"Error accessing address book: HTTP {response.status_code}"
+                elif response.status >= 400:
+                    msg = f"Error accessing address book: HTTP {response.status}"
                     logger.error(msg)
                     self.client = None
                     return False, msg
                     
                 logger.debug("Address book access verified")
                 
-            except requests.exceptions.RequestException as e:
+            except Exception as e:
                 msg = f"Error accessing address book: {str(e)}"
                 logger.error(msg)
                 self.client = None
