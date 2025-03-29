@@ -93,7 +93,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { format } from 'date-fns'
 
@@ -105,7 +105,10 @@ const contactsCount = ref(0)
 const upcomingEventsCount = ref(0)
 const contactsLastSync = ref(null)
 const calendarLastSync = ref(null)
-const isServerConnected = ref(false)
+const isServerConnected = computed(() => {
+  const serverSettings = authStore.serverSettings
+  return serverSettings && serverSettings.serverUrl && serverSettings.username && serverSettings.password
+})
 const lastLogin = ref(authStore.user?.last_login || null)
 
 function formatDate(timestamp) {
@@ -121,7 +124,7 @@ onMounted(async () => {
     upcomingEventsCount.value = '...'
     contactsLastSync.value = Date.now()
     calendarLastSync.value = Date.now()
-    isServerConnected.value = true
+    isServerConnected.value = isServerConnected.value
   } catch (error) {
     console.error('Failed to load dashboard data:', error)
   }

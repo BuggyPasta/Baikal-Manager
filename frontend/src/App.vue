@@ -1,5 +1,5 @@
 <template>
-  <div id="app" :class="{ 'dark': isDarkMode }">
+  <div id="app" :class="{ 'dark': isDarkMode }" class="min-h-screen flex flex-col">
     <header v-if="isAuthenticated" class="sticky top-0 bg-white dark:bg-gray-900 shadow-md">
       <nav class="container mx-auto px-4 py-4 flex items-center justify-between">
         <!-- Logo and App Name -->
@@ -47,11 +47,11 @@
       </div>
     </header>
 
-    <main class="container mx-auto px-4 py-8">
+    <main class="container mx-auto px-4 py-8 flex-grow">
       <router-view></router-view>
     </main>
 
-    <footer class="mt-auto py-4">
+    <footer class="mt-auto py-4 bg-white dark:bg-gray-900">
       <hr class="w-11/12 mx-auto border-gray-200 dark:border-gray-700">
       <div class="text-center text-xs mt-2">
         Created by 
@@ -86,20 +86,34 @@ const themeIcon = computed(() =>
 
 // Initialize theme
 onMounted(async () => {
-  if (isAuthenticated.value) {
-    try {
-      const settings = await authStore.getSettings()
-      isDarkMode.value = settings.theme === 'dark'
-      document.documentElement.classList.toggle('dark', isDarkMode.value)
-    } catch (error) {
-      console.error('Failed to load theme setting:', error)
+  // Try to get theme from localStorage first
+  const savedTheme = localStorage.getItem('theme')
+  if (savedTheme) {
+    isDarkMode.value = savedTheme === 'dark'
+  } else {
+    // If no saved theme, use the default from settings if authenticated
+    if (isAuthenticated.value) {
+      try {
+        const settings = await authStore.getSettings()
+        isDarkMode.value = settings.theme === 'dark'
+      } catch (error) {
+        console.error('Failed to load theme setting:', error)
+        // Fallback to system preference
+        isDarkMode.value = window.matchMedia('(prefers-color-scheme: dark)').matches
+      }
+    } else {
+      // For unauthenticated users, use system preference
+      isDarkMode.value = window.matchMedia('(prefers-color-scheme: dark)').matches
     }
   }
+  document.documentElement.classList.toggle('dark', isDarkMode.value)
 })
 
 async function toggleTheme() {
   isDarkMode.value = !isDarkMode.value
   document.documentElement.classList.toggle('dark', isDarkMode.value)
+  // Save to localStorage
+  localStorage.setItem('theme', isDarkMode.value ? 'dark' : 'light')
   if (isAuthenticated.value) {
     try {
       await authStore.updateSettings({ theme: isDarkMode.value ? 'dark' : 'light' })

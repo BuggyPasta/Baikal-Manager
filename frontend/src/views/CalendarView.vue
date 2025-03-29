@@ -19,7 +19,7 @@
         </button>
       </div>
 
-      <div class="flex items-center space-x-4">
+      <div v-if="currentView !== 'list'" class="flex items-center space-x-4">
         <button
           class="btn-secondary"
           @click="goToToday"
@@ -28,7 +28,7 @@
         </button>
         <div class="flex items-center space-x-2">
           <button
-            class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
+            class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center w-8 h-8"
             @click="previousPeriod"
           >
             <span class="sr-only">Previous</span>
@@ -36,7 +36,7 @@
           </button>
           <h2 class="text-xl font-semibold">{{ currentPeriodLabel }}</h2>
           <button
-            class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
+            class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center w-8 h-8"
             @click="nextPeriod"
           >
             <span class="sr-only">Next</span>
@@ -97,14 +97,15 @@
     <!-- Calendar Grid -->
     <div v-else class="bg-white dark:bg-gray-800 rounded-lg shadow">
       <!-- Month View -->
-      <div v-if="currentView === 'month'" class="grid grid-cols-7 gap-px">
+      <div v-if="currentView === 'month'" class="grid grid-cols-7 gap-0 border border-gray-200 dark:border-gray-700">
         <!-- Day Headers -->
         <div
           v-for="day in weekDays"
           :key="day"
-          class="p-2 text-center text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700"
+          class="p-2 text-center text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 border-b border-r border-gray-200 dark:border-gray-700"
         >
-          {{ day }}
+          {{ format(day, 'EEE') }}
+          <div class="text-xs">{{ format(day, 'd MMM') }}</div>
         </div>
         
         <!-- Calendar Days -->
@@ -112,7 +113,7 @@
           v-for="(day, index) in monthDays"
           :key="index"
           :class="[
-            'min-h-[120px] p-2',
+            'min-h-[120px] p-2 border-b border-r border-gray-200 dark:border-gray-700',
             day.isCurrentMonth ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-700',
             day.isToday ? 'border-2 border-blue-600' : ''
           ]"
@@ -208,9 +209,9 @@
       </div>
 
       <!-- Day View -->
-      <div v-else-if="currentView === 'day'" class="calendar-grid grid-cols-2">
+      <div v-else-if="currentView === 'day'" class="grid grid-cols-[100px_1fr] border border-gray-200 dark:border-gray-700">
         <!-- Header -->
-        <div class="calendar-header-cell">Time</div>
+        <div class="calendar-header-cell border-r border-gray-200 dark:border-gray-700">Time</div>
         <div class="calendar-header-cell">
           {{ format(currentDate, 'EEEE, MMM d') }}
         </div>
@@ -218,7 +219,7 @@
         <!-- Time slots -->
         <template v-for="hour in 24" :key="hour">
           <!-- First 30 minutes -->
-          <div class="calendar-time-cell">
+          <div class="calendar-time-cell border-r border-gray-200 dark:border-gray-700">
             {{ formatHour(hour - 1) }}
           </div>
           <div class="calendar-week-cell relative">
@@ -354,7 +355,9 @@ function navigateDate(direction) {
 }
 
 function formatHour(hour) {
-  return format(setHours(new Date(), hour), 'HH:mm')
+  const date = new Date();
+  date.setHours(hour, 0, 0, 0); // Set minutes to 0
+  return format(date, 'HH:mm');
 }
 
 function formatEventTime(event) {
