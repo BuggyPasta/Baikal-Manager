@@ -281,20 +281,14 @@ const saveServerSettings = async () => {
   try {
     setLoading(true, 'Verifying connection...')
     errorMessage.value = ''
-    console.log('Attempting to verify connection with settings:', {
-      ...serverSettings.value,
-      password: '[REDACTED]'
-    })
+    console.log('Attempting to verify connection with settings:', serverSettings.value)
     
     const verifyResponse = await fetch('/api/settings/baikal/verify', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        ...serverSettings.value,
-        password: '[REDACTED]'
-      })
+      body: JSON.stringify(serverSettings.value)
     })
     
     let verifyData
@@ -303,7 +297,10 @@ const saveServerSettings = async () => {
       console.log('Raw server response:', responseText)
       try {
         verifyData = JSON.parse(responseText)
-        console.log('Parsed server response:', verifyData)
+        console.log('Parsed server response:', {
+          ...verifyData,
+          password: verifyData.password ? '[REDACTED]' : undefined
+        })
       } catch (parseError) {
         console.error('Failed to parse server response:', parseError)
         console.error('Raw response:', responseText)
@@ -328,10 +325,7 @@ const saveServerSettings = async () => {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        ...serverSettings.value,
-        password: '[REDACTED]'
-      })
+      body: JSON.stringify(serverSettings.value)
     })
     
     if (!saveResponse.ok) {
@@ -386,10 +380,7 @@ const testConnection = async () => {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        ...serverSettings.value,
-        password: '[REDACTED]'
-      })
+      body: JSON.stringify(serverSettings.value)
     })
     
     let data
