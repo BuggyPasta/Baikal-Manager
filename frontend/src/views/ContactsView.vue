@@ -219,6 +219,10 @@ const showContactModal = ref(false)
 const selectedContact = ref(null)
 
 // Computed
+const hasServerSettings = computed(() => {
+  return authStore.serverSettings?.serverUrl
+})
+
 const filteredContacts = computed(() => {
   let filtered = contacts.value
 
@@ -250,16 +254,27 @@ const filteredContacts = computed(() => {
 
 // Methods
 const fetchAddressBooks = async () => {
+  if (!hasServerSettings.value) {
+    error.value = 'Server settings not configured. Please configure Baikal settings first.'
+    return
+  }
+
   try {
     const response = await axios.get('/api/contacts/address-books')
-    addressBooks.value = response.data
+    addressBooks.value = response.data || []
   } catch (err) {
     error.value = err.response?.data?.error || 'Failed to load address books'
     console.error('Error fetching address books:', err)
+    addressBooks.value = []
   }
 }
 
 const fetchContacts = async () => {
+  if (!hasServerSettings.value) {
+    error.value = 'Server settings not configured. Please configure Baikal settings first.'
+    return
+  }
+
   loading.value = true
   error.value = null
   try {
@@ -268,10 +283,11 @@ const fetchContacts = async () => {
         addressBookId: selectedAddressBook.value
       }
     })
-    contacts.value = response.data
+    contacts.value = response.data || []
   } catch (err) {
     error.value = err.response?.data?.error || 'Failed to load contacts'
     console.error('Error fetching contacts:', err)
+    contacts.value = []
   } finally {
     loading.value = false
   }
@@ -364,12 +380,18 @@ const exportContacts = async () => {
 
 // Watch for address book changes to fetch new contacts
 watch(selectedAddressBook, () => {
-  fetchContacts()
+  if (hasServerSettings.value) {
+    fetchContacts()
+  }
 })
 
 // Initial load
 onMounted(async () => {
-  await fetchAddressBooks()
-  await fetchContacts()
+  if (hasServerSettings.value) {
+    await fetchAddressBooks()
+    await fetchContacts()
+  } else {
+    error.value = 'Server settings not configured. Please configure Baikal settings first.'
+  }
 })
 </script> 

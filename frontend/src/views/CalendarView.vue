@@ -291,6 +291,11 @@ const showEventModal = ref(false)
 const selectedEvent = ref(null)
 const selectedDate = ref(null)
 
+// Computed
+const hasServerSettings = computed(() => {
+  return authStore.serverSettings?.serverUrl
+})
+
 // Week days array for headers
 const weekDays = computed(() => {
   const start = startOfWeek(currentDate.value, { weekStartsOn: 1 })
@@ -420,6 +425,11 @@ function closeEventModal() {
 }
 
 const fetchEvents = async () => {
+  if (!hasServerSettings.value) {
+    error.value = 'Server settings not configured. Please configure Baikal settings first.'
+    return
+  }
+
   loading.value = true
   error.value = null
   try {
@@ -432,10 +442,11 @@ const fetchEvents = async () => {
         end: endDate.toISOString()
       }
     })
-    events.value = response.data
+    events.value = response.data || []
   } catch (err) {
     error.value = err.response?.data?.error || 'Failed to load events'
     console.error('Error fetching events:', err)
+    events.value = []
   } finally {
     loading.value = false
   }
@@ -471,7 +482,7 @@ const deleteEvent = async (eventId) => {
 
 // Watch for view/date changes to refresh events
 watch([currentView, currentDate], () => {
-  if (authStore.serverSettings) {
+  if (hasServerSettings.value) {
     fetchEvents()
   }
 })
@@ -482,8 +493,10 @@ onMounted(() => {
   events.value = []
   
   // Only fetch events if we have server settings
-  if (authStore.serverSettings) {
+  if (hasServerSettings.value) {
     fetchEvents()
+  } else {
+    error.value = 'Server settings not configured. Please configure Baikal settings first.'
   }
 })
 
