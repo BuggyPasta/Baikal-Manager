@@ -1,11 +1,11 @@
 from flask import Blueprint, request, jsonify, session, Response
 import vobject
-from datetime import datetime
-import uuid
 from ..utils.auth import login_required
 from ..utils.settings import get_user_data, log_error
+from ..services.addressbook import AddressBookService
 
 contacts = Blueprint('contacts', __name__, url_prefix='/api/contacts')
+addressbook_service = AddressBookService()
 
 def contact_to_json(vcard) -> dict:
     return {
@@ -53,9 +53,14 @@ def get_address_book(address_book_id: str):
 @login_required
 def get_address_books():
     try:
-        client = get_user_data().get_carddav_client()
-        books = client.principal().addressbooks()
-        return jsonify([{'id': book.id, 'name': book.name} for book in books])
+        user_data = get_user_data()
+        if not user_data:
+            return jsonify({'error': 'User data not found'}), 401
+            
+        books = addressbook_service.get_books(user_data)
+        return jsonify(books)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         log_error(session.get('user_id', 'unknown'), str(e))
         return jsonify({'error': 'Failed to fetch address books'}), 500
@@ -64,8 +69,16 @@ def get_address_books():
 @login_required
 def get_contacts():
     try:
-        book = get_address_book(request.args.get('addressBookId'))
-        return jsonify([contact_to_json(vobject.readOne(card.data)) for card in book.cards()])
+        user_data = get_user_data()
+        if not user_data:
+            return jsonify({'error': 'User data not found'}), 401
+            
+        book_id = request.args.get('addressBookId')
+        if not book_id:
+            return jsonify({'error': 'Address book ID is required'}), 400
+            
+        contacts = addressbook_service.get_contacts(user_data, book_id)
+        return jsonify(contacts)
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
     except Exception as e:
@@ -79,11 +92,17 @@ def create_contact():
         return jsonify({'error': 'No contact data provided'}), 400
     
     try:
+        user_data = get_user_data()
+        if not user_data:
+            return jsonify({'error': 'User data not found'}), 401
+            
         data = request.json.copy()
-        book = get_address_book(data.pop('addressBookId'))
-        vcard = json_to_vcard(data)
-        book.save_vcard(vcard.serialize())
-        return jsonify(contact_to_json(vcard))
+        book_id = data.pop('addressBookId')
+        if not book_id:
+            return jsonify({'error': 'Address book ID is required'}), 400
+            
+        contact = addressbook_service.create_contact(user_data, book_id, data)
+        return jsonify(contact)
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
     except Exception as e:
@@ -97,12 +116,18 @@ def update_contact(contact_id):
         return jsonify({'error': 'No contact data provided'}), 400
     
     try:
+        user_data = get_user_data()
+        if not user_data:
+            return jsonify({'error': 'User data not found'}), 401
+            
         data = request.json.copy()
-        book = get_address_book(data.pop('addressBookId'))
+        book_id = data.pop('addressBookId')
+        if not book_id:
+            return jsonify({'error': 'Address book ID is required'}), 400
+            
         data['id'] = contact_id
-        vcard = json_to_vcard(data)
-        book.save_vcard(vcard.serialize())
-        return jsonify(contact_to_json(vcard))
+        contact = addressbook_service.update_contact(user_data, book_id, data)
+        return jsonify(contact)
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
     except Exception as e:
@@ -113,13 +138,16 @@ def update_contact(contact_id):
 @login_required
 def delete_contact(contact_id):
     try:
-        book = get_address_book(request.args.get('addressBookId'))
-        for card in book.cards():
-            vcard = vobject.readOne(card.data)
-            if getattr(vcard, 'uid', None) and vcard.uid.value == contact_id:
-                card.delete()
-                return jsonify({'message': 'Contact deleted'})
-        return jsonify({'error': 'Contact not found'}), 404
+        user_data = get_user_data()
+        if not user_data:
+            return jsonify({'error': 'User data not found'}), 401
+            
+        book_id = request.args.get('addressBookId')
+        if not book_id:
+            return jsonify({'error': 'Address book ID is required'}), 400
+            
+        addressbook_service.delete_contact(user_data, book_id, contact_id)
+        return jsonify({'message': 'Contact deleted'})
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
     except Exception as e:
@@ -135,12 +163,16 @@ def import_contacts():
         return jsonify({'error': 'Invalid file format. Only .vcf files are supported'}), 400
     
     try:
-        book = get_address_book(request.form.get('addressBookId'))
-        vcards = vobject.readComponents(request.files['file'].read().decode('utf-8'))
-        count = 0
-        for vcard in vcards:
-            book.save_vcard(vcard.serialize())
-            count += 1
+        user_data = get_user_data()
+        if not user_data:
+            return jsonify({'error': 'User data not found'}), 401
+            
+        book_id = request.form.get('addressBookId')
+        if not book_id:
+            return jsonify({'error': 'Address book ID is required'}), 400
+            
+        vcard_data = request.files['file'].read().decode('utf-8')
+        count = addressbook_service.import_contacts(user_data, book_id, vcard_data)
         return jsonify({'message': f'Imported {count} contacts'})
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
@@ -152,9 +184,17 @@ def import_contacts():
 @login_required
 def export_contacts():
     try:
-        book = get_address_book(request.args.get('addressBookId'))
+        user_data = get_user_data()
+        if not user_data:
+            return jsonify({'error': 'User data not found'}), 401
+            
+        book_id = request.args.get('addressBookId')
+        if not book_id:
+            return jsonify({'error': 'Address book ID is required'}), 400
+            
+        vcard_data = addressbook_service.export_contacts(user_data, book_id)
         return Response(
-            ''.join(card.data for card in book.cards()),
+            vcard_data,
             mimetype='text/vcard',
             headers={'Content-Disposition': 'attachment; filename=contacts.vcf'}
         )

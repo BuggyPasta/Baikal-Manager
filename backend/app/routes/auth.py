@@ -33,8 +33,9 @@ def register():
             full_name=full_name
         )
         
-        # Only store user_id in session
+        # Store user_id and user data in session
         session['user_id'] = user_data['username']
+        session['user_data'] = sanitize_user_data(user_data)
         
         return jsonify({
             'message': 'User registered',
@@ -60,8 +61,9 @@ def login():
         
         user_store.update_last_login(request.json['username'])
         
-        # Only store user_id in session
+        # Store user_id and user data in session
         session['user_id'] = user_data['username']
+        session['user_data'] = sanitize_user_data(user_data)
         
         # Load settings from user store
         settings = load_settings(user_data['username'])
@@ -91,6 +93,9 @@ def check_auth():
         if not (user_data := user_store.get_user(user_id)):
             session.clear()
             return jsonify({'error': 'User not found'}), 401
+        
+        # Update session with latest user data
+        session['user_data'] = sanitize_user_data(user_data)
         
         # Load settings from user store
         settings = load_settings(user_id)

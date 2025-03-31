@@ -16,7 +16,9 @@ def configure_security(app: Flask):
         PERMANENT_SESSION_LIFETIME=timedelta(days=7),
         SESSION_TYPE='filesystem',
         SESSION_FILE_DIR=Config.get_path('flask_session'),
-        SESSION_FILE_THRESHOLD=500  # Maximum number of sessions stored on disk
+        SESSION_FILE_THRESHOLD=500,  # Maximum number of sessions stored on disk
+        SESSION_FILE_MODE=0o600,  # Secure file permissions
+        SESSION_USE_SIGNER=True  # Sign the session cookie
     )
 
     # CORS configuration

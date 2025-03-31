@@ -248,9 +248,9 @@ class BaikalClient:
             logger.error(msg)
             self.client = None
             return False, msg
-
+            
     def get_client(self) -> Tuple[bool, Union[caldav.DAVClient, str]]:
-        """Get the current client or return an error message"""
-        if not self.client:
-            return False, "No client initialized. Call verify_connection first."
-        return True, self.client 
+        """Get the current client or create a new one"""
+        if self.client:
+            return True, self.client
+        return False, "Client not initialized" 
