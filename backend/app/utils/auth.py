@@ -13,7 +13,7 @@ def login_required(f):
     """Decorator to require authentication for routes"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'username' not in session:
+        if 'user_id' not in session:
             return jsonify({'error': 'Authentication required'}), 401
         return f(*args, **kwargs)
     return decorated_function
@@ -22,7 +22,7 @@ def guest_only(f):
     """Decorator to restrict routes to unauthenticated users only"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'username' in session:
+        if 'user_id' in session:
             return jsonify({'error': 'Already authenticated'}), 403
         return f(*args, **kwargs)
     return decorated_function
