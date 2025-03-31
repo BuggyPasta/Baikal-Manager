@@ -27,6 +27,17 @@
           >
             Today
           </button>
+          <button
+            class="btn-secondary"
+            @click="fetchEvents"
+            :disabled="loading"
+          >
+            <svg v-if="loading" class="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Sync
+          </button>
           <div class="flex items-center">
             <button @click="previousPeriod" class="p-2 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
               <img :src="arrowPrevious" alt="Previous" class="w-5 h-5 dark:invert" />
@@ -481,9 +492,9 @@ const deleteEvent = async (eventId) => {
 }
 
 // Watch for view/date changes to refresh events
-watch([currentView, currentDate], () => {
+watch([currentView, currentDate], async () => {
   if (hasServerSettings.value) {
-    fetchEvents()
+    await fetchEvents()
   }
 })
 
@@ -497,17 +508,17 @@ onMounted(async () => {
   
   // Only fetch events if we have server settings
   if (hasServerSettings.value) {
-    fetchEvents()
+    await fetchEvents()
   } else {
     error.value = 'Server settings not configured. Please configure Baikal settings first.'
   }
 })
 
 // Watch for server settings changes
-watch(() => authStore.serverSettings, (newSettings) => {
+watch(() => authStore.serverSettings, async (newSettings) => {
   if (newSettings?.serverUrl) {
     error.value = null
-    fetchEvents()
+    await fetchEvents()
   } else {
     error.value = 'Server settings not configured. Please configure Baikal settings first.'
   }

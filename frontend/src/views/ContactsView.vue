@@ -43,6 +43,19 @@
           </option>
         </select>
 
+        <!-- Sync Button -->
+        <button
+          @click="syncContacts"
+          :disabled="loading"
+          class="px-4 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center"
+        >
+          <svg v-if="loading" class="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Sync
+        </button>
+
         <!-- Import/Export -->
         <div class="flex gap-2">
           <input
@@ -368,12 +381,24 @@ const exportContacts = async () => {
   }
 }
 
-// Watch for address book changes to fetch new contacts
-watch(selectedAddressBook, () => {
-  if (hasServerSettings.value) {
-    fetchContacts()
+const syncContacts = async () => {
+  if (!hasServerSettings.value) {
+    error.value = 'Server settings not configured. Please configure Baikal settings first.'
+    return
   }
-})
+
+  loading.value = true
+  error.value = null
+  try {
+    await fetchAddressBooks()
+    await fetchContacts()
+  } catch (err) {
+    error.value = err.response?.data?.error || 'Failed to sync contacts'
+    console.error('Error syncing contacts:', err)
+  } finally {
+    loading.value = false
+  }
+}
 
 // Initial load
 onMounted(async () => {
@@ -389,13 +414,20 @@ onMounted(async () => {
 })
 
 // Watch for server settings changes
-watch(() => authStore.serverSettings, (newSettings) => {
+watch(() => authStore.serverSettings, async (newSettings) => {
   if (newSettings?.serverUrl) {
     error.value = null
-    fetchAddressBooks()
-    fetchContacts()
+    await fetchAddressBooks()
+    await fetchContacts()
   } else {
     error.value = 'Server settings not configured. Please configure Baikal settings first.'
   }
 }, { immediate: true })
+
+// Watch for address book changes to fetch new contacts
+watch(selectedAddressBook, async () => {
+  if (hasServerSettings.value) {
+    await fetchContacts()
+  }
+})
 </script> 
