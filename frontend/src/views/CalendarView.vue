@@ -442,7 +442,7 @@ const fetchEvents = async () => {
         end: endDate.toISOString()
       }
     })
-    events.value = response.data || []
+    events.value = Array.isArray(response.data) ? response.data : []
   } catch (err) {
     error.value = err.response?.data?.error || 'Failed to load events'
     console.error('Error fetching events:', err)

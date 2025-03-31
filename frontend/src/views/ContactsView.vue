@@ -224,31 +224,21 @@ const hasServerSettings = computed(() => {
 })
 
 const filteredContacts = computed(() => {
-  let filtered = contacts.value
-
-  // Filter by address book
-  if (selectedAddressBook.value) {
-    filtered = filtered.filter(contact => contact.addressBookId === selectedAddressBook.value)
+  if (!contacts.value || !Array.isArray(contacts.value)) {
+    return []
   }
-
-  // Filter by search query
+  
+  let filtered = contacts.value
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     filtered = filtered.filter(contact => {
-      const searchableFields = [
-        contact.firstName,
-        contact.lastName,
-        contact.displayName,
-        contact.email,
-        contact.phone,
-        contact.organization,
-        contact.address
-      ].filter(Boolean)
-      
-      return searchableFields.some(field => field.toLowerCase().includes(query))
+      const name = (contact.fn || '').toLowerCase()
+      const org = (contact.org || '').toLowerCase()
+      const email = (contact.email?.[0]?.value || '').toLowerCase()
+      const phone = (contact.tel?.[0]?.value || '').toLowerCase()
+      return name.includes(query) || org.includes(query) || email.includes(query) || phone.includes(query)
     })
   }
-
   return filtered
 })
 
@@ -283,7 +273,7 @@ const fetchContacts = async () => {
         addressBookId: selectedAddressBook.value
       }
     })
-    contacts.value = response.data || []
+    contacts.value = Array.isArray(response.data) ? response.data : []
   } catch (err) {
     error.value = err.response?.data?.error || 'Failed to load contacts'
     console.error('Error fetching contacts:', err)
@@ -377,6 +367,13 @@ const exportContacts = async () => {
     console.error('Error exporting contacts:', err)
   }
 }
+
+// Watch for address book changes to fetch new contacts
+watch(selectedAddressBook, () => {
+  if (hasServerSettings.value) {
+    fetchContacts()
+  }
+})
 
 // Initial load
 onMounted(async () => {

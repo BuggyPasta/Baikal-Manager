@@ -254,12 +254,10 @@ const loadSettings = async () => {
     }
     
     // Load user settings
-    if (settings?.user) {
-      userSettings.value = {
-        fullName: settings.user.fullName || '',
-        username: settings.user.username || '',
-        password: '' // Don't load password
-      }
+    userSettings.value = {
+      fullName: authStore.user?.fullName || '',
+      username: authStore.user?.username || '',
+      password: '' // Don't load password
     }
     
     // Load app settings
@@ -415,6 +413,17 @@ onMounted(async () => {
 watch(() => authStore.serverSettings, (newSettings) => {
   if (newSettings) {
     serverSettings.value = { ...newSettings }
+  }
+}, { immediate: true })
+
+// Watch for user changes
+watch(() => authStore.user, (newUser) => {
+  if (newUser) {
+    userSettings.value = {
+      fullName: newUser.fullName || '',
+      username: newUser.username || '',
+      password: '' // Don't load password
+    }
   }
 }, { immediate: true })
 </script> 
