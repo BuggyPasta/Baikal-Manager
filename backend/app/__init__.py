@@ -24,20 +24,18 @@ def create_app():
     
     # Configure security first
     app.config['SECRET_KEY'] = Config.APP_SECRET_KEY
-    app.config['SESSION_COOKIE_SECURE'] = True
-    app.config['SESSION_COOKIE_SAMESITE'] = 'None'
-    app.config['SESSION_COOKIE_HTTPONLY'] = True
-    app.config['SESSION_COOKIE_PATH'] = '/'
+    app.config['SESSION_COOKIE_SECURE'] = False
+    app.config['SESSION_COOKIE_SAMESITE'] = None
+    app.config['SESSION_COOKIE_HTTPONLY'] = False
     
     configure_security(app)
     
     # Initialize CORS after security config
     CORS(app, 
          supports_credentials=True,
-         origins=['http://localhost:5173', 'http://127.0.0.1:5173'],
-         allow_headers=['Content-Type', 'Authorization'],
-         expose_headers=['Content-Type', 'Authorization'],
-         methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
+         origins=['*'],
+         allow_headers=['*'],
+         methods=['*'])
     
     # Initialize session after CORS
     Session(app)
