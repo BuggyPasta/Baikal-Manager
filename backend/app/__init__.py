@@ -4,6 +4,8 @@ from flask_session import Session
 from .routes.health import health_bp
 from .routes.auth import bp as auth_bp
 from .routes.settings import bp as settings_bp
+from .routes.calendar import bp as calendar_bp
+from .routes.contacts import contacts as contacts_bp
 from .config.config import Config
 from .config.logging import setup_logging
 from .config.security import configure_security
@@ -39,6 +41,8 @@ def create_app():
     app.register_blueprint(health_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(settings_bp)
+    app.register_blueprint(calendar_bp)
+    app.register_blueprint(contacts_bp)
     
     # Serve frontend
     @app.route('/', defaults={'path': ''})
