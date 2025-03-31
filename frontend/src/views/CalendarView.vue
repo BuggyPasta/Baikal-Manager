@@ -447,22 +447,17 @@ const fetchEvents = async () => {
     // First get the calendar ID
     const calendarsResponse = await axios.get('/api/calendar/calendars')
     if (calendarsResponse.data?.error) {
-      error.value = calendarsResponse.data.error
-      events.value = []
-      return
+      throw new Error(calendarsResponse.data.error)
     }
-
-    const calendars = Array.isArray(calendarsResponse.data) ? calendarsResponse.data : []
-    if (calendars.length === 0) {
-      error.value = 'No calendars found'
-      events.value = []
-      return
+    
+    if (!calendarsResponse.data?.calendars?.length) {
+      throw new Error('No calendars found')
     }
-
+    
     // Use the first calendar
-    const calendarId = calendars[0].id
-
-    // Calculate date range based on current view
+    const calendarId = calendarsResponse.data.calendars[0].id
+    
+    // Get the start and end dates for the current view
     let startDate, endDate
     if (currentView.value === 'month') {
       startDate = startOfMonth(currentDate.value)
@@ -474,27 +469,24 @@ const fetchEvents = async () => {
       startDate = currentDate.value
       endDate = addDays(currentDate.value, 1)
     }
-
+    
     // Fetch events for the date range
     const eventsResponse = await axios.get('/api/calendar/events', {
       params: {
-        calendarId,
-        start: startDate.toISOString(),
-        end: endDate.toISOString()
+        calendar_id: calendarId,
+        start_date: startDate.toISOString(),
+        end_date: endDate.toISOString()
       }
     })
-
+    
     if (eventsResponse.data?.error) {
-      error.value = eventsResponse.data.error
-      events.value = []
-      return
+      throw new Error(eventsResponse.data.error)
     }
-
-    events.value = Array.isArray(eventsResponse.data) ? eventsResponse.data : []
+    
+    events.value = eventsResponse.data.events || []
   } catch (err) {
-    error.value = err.response?.data?.error || 'Failed to load events'
+    error.value = err.response?.data?.error || err.message || 'Failed to fetch events'
     console.error('Error fetching events:', err)
-    events.value = []
   } finally {
     loading.value = false
   }

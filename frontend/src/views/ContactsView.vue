@@ -433,12 +433,19 @@ const syncContacts = async () => {
 
 // Initial load
 onMounted(async () => {
+  // Always initialize with empty arrays
+  addressBooks.value = []
+  contacts.value = []
+  
   // Ensure settings are loaded
   await authStore.ensureSettings()
   
+  // Only fetch data if we have server settings
   if (hasServerSettings.value) {
     await fetchAddressBooks()
-    await fetchContacts()
+    if (selectedAddressBook.value) {
+      await fetchContacts()
+    }
   } else {
     error.value = 'Server settings not configured. Please configure Baikal settings first.'
   }
@@ -449,9 +456,13 @@ watch(() => authStore.serverSettings, async (newSettings) => {
   if (newSettings?.serverUrl) {
     error.value = null
     await fetchAddressBooks()
-    await fetchContacts()
+    if (selectedAddressBook.value) {
+      await fetchContacts()
+    }
   } else {
     error.value = 'Server settings not configured. Please configure Baikal settings first.'
+    addressBooks.value = []
+    contacts.value = []
   }
 }, { immediate: true })
 
