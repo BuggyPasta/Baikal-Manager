@@ -6,6 +6,8 @@ import caldav
 import json
 from datetime import datetime, timedelta
 import logging
+from ..utils.auth import login_required
+from ..utils.settings import load_settings, save_settings, log_error
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -18,7 +20,7 @@ if not logger.handlers:
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
-    logger.debug("Settings logger initialized")
+    logger.debug("Settings routes logger initialized")
 
 bp = Blueprint('settings', __name__, url_prefix='/api/settings')
 baikal_client = BaikalClient()
@@ -208,6 +210,37 @@ def save_settings():
         return jsonify({'message': 'Settings saved successfully'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@bp.route('/load', methods=['GET'])
+@login_required
+def get_settings_load():
+    """Load user settings."""
+    logger.debug(f"Settings load request received for user {session.get('user_id')}")
+    try:
+        settings = load_settings()
+        logger.debug(f"Settings loaded for user {session.get('user_id')}: {settings}")
+        return jsonify(settings)
+    except Exception as e:
+        logger.error(f"Failed to load settings for user {session.get('user_id')}: {str(e)}")
+        return jsonify({'error': 'Failed to load settings'}), 500
+
+@bp.route('/save', methods=['POST'])
+@login_required
+def save_user_settings():
+    """Save user settings."""
+    logger.debug(f"Settings save request received for user {session.get('user_id')}")
+    if not request.json:
+        return jsonify({'error': 'No settings data provided'}), 400
+    
+    try:
+        settings = request.json
+        logger.debug(f"Settings to save for user {session.get('user_id')}: {settings}")
+        save_settings(settings)
+        logger.debug(f"Settings saved successfully for user {session.get('user_id')}")
+        return jsonify({'message': 'Settings saved'})
+    except Exception as e:
+        logger.error(f"Failed to save settings for user {session.get('user_id')}: {str(e)}")
+        return jsonify({'error': 'Failed to save settings'}), 500
 
 def log_error(username: str, message: str):
     """Log errors through the console logger"""

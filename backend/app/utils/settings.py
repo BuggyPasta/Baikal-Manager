@@ -19,30 +19,90 @@ if not logger.handlers:
     logger.addHandler(console_handler)
     logger.debug("Settings utils logger initialized")
 
-def load_settings(user_id: str) -> Dict[str, Any]:
-    """Load user settings from user store"""
+def load_settings():
+    """Load user settings from the user store."""
+    user_id = session.get('user_id')
+    logger.debug(f"Loading settings for user {user_id}")
+    
     try:
-        if user_data := get_user_store().get_user(user_id):
-            return user_data
-        return {}
+        user_store = get_user_store()
+        user_data = user_store.get_user(user_id)
+        
+        if not user_data:
+            logger.warning(f"No user data found for user {user_id}")
+            return None
+            
+        logger.debug(f"Settings loaded for user {user_id}: {user_data}")
+        return user_data
     except Exception as e:
         logger.error(f"Failed to load settings for user {user_id}: {str(e)}")
-        return {}
+        raise
 
-def save_settings(user_id: str, settings: Dict[str, Any]) -> None:
-    """Save user settings to user store"""
+def save_settings(settings):
+    """Save user settings to the user store."""
+    user_id = session.get('user_id')
+    logger.debug(f"Saving settings for user {user_id}")
+    
     try:
-        get_user_store().update_user(user_id, settings)
-        # Update session data after saving
-        if user_data := get_user_store().get_user(user_id):
-            session['user_data'] = user_data
+        user_store = get_user_store()
+        user_data = user_store.get_user(user_id)
+        
+        if not user_data:
+            logger.warning(f"No user data found for user {user_id}")
+            return
+            
+        # Update user data with new settings
+        user_data.update(settings)
+        user_store.update_user(user_id, user_data)
+        
+        # Update session with new user data
+        session['user_data'] = user_data
+        
+        logger.debug(f"Settings saved for user {user_id}: {user_data}")
     except Exception as e:
         logger.error(f"Failed to save settings for user {user_id}: {str(e)}")
         raise
 
-def log_error(user_id: str, error: str) -> None:
+def log_error(username: str, message: str):
     """Log errors through the console logger"""
-    logger.error(f"User {user_id}: {error}")
+    logger.error(f"Error for user {username}: {message}")
+
+def update_settings(settings):
+    """Update specific settings while preserving others."""
+    user_id = session.get('user_id')
+    logger.debug(f"Updating settings for user {user_id}")
+    
+    try:
+        current_settings = load_settings()
+        if not current_settings:
+            logger.warning(f"No current settings found for user {user_id}")
+            return
+            
+        # Update only the specified settings
+        current_settings.update(settings)
+        save_settings(current_settings)
+        
+        logger.debug(f"Settings updated for user {user_id}: {current_settings}")
+    except Exception as e:
+        logger.error(f"Failed to update settings for user {user_id}: {str(e)}")
+        raise
+
+def get_user_data():
+    """Get the current user's data from the session."""
+    user_id = session.get('user_id')
+    logger.debug(f"Getting user data for user {user_id}")
+    
+    try:
+        user_data = session.get('user_data')
+        if not user_data:
+            logger.warning(f"No user data in session for user {user_id}")
+            return None
+            
+        logger.debug(f"User data retrieved for user {user_id}: {user_data}")
+        return user_data
+    except Exception as e:
+        logger.error(f"Failed to get user data for user {user_id}: {str(e)}")
+        return None
 
 def update_settings(user_id: str, category: str, settings: Dict) -> None:
     """Update settings for a specific category"""
@@ -56,23 +116,4 @@ def update_settings(user_id: str, category: str, settings: Dict) -> None:
             session['user_data'] = user_data
     except Exception as e:
         logger.error(f"Failed to update {category} settings for user {user_id}: {str(e)}")
-        raise
-
-def get_user_data() -> Optional[Dict]:
-    """Get user data from session first, falling back to user store if needed"""
-    if not (user_id := session.get('user_id')):
-        return None
-        
-    # Try to get data from session first
-    if user_data := session.get('user_data'):
-        return user_data
-        
-    # Fall back to user store if session data is missing
-    try:
-        if user_data := get_user_store().get_user(user_id):
-            session['user_data'] = user_data
-            return user_data
-    except Exception as e:
-        logger.error(f"Failed to get user data from store for user {user_id}: {str(e)}")
-        
-    return None 
+        raise 
