@@ -6,8 +6,18 @@ from ..utils.settings import load_settings
 bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
 def sanitize_user_data(user_data):
-    """Remove sensitive data from user object"""
-    return {k: v for k, v in user_data.items() if k != 'password'} if user_data else None
+    """Remove sensitive data from user object while preserving Baikal credentials"""
+    if not user_data:
+        return None
+        
+    # Create a copy of the user data
+    sanitized = user_data.copy()
+    
+    # Only remove the user's password, keep everything else including Baikal credentials
+    if 'password' in sanitized:
+        del sanitized['password']
+        
+    return sanitized
 
 @bp.route('/register', methods=['POST'])
 def register():
