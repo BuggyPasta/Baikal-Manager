@@ -263,16 +263,21 @@ const fetchAddressBooks = async () => {
   }
 
   try {
+    console.log('Fetching address books with settings:', authStore.serverSettings)
     const response = await axios.get('/api/contacts/address-books')
+    console.log('Address books response:', response.data)
+    
     if (response.data?.error) {
       error.value = response.data.error
       addressBooks.value = []
       return
     }
-    addressBooks.value = response.data || []
+    
+    addressBooks.value = Array.isArray(response.data) ? response.data : []
+    console.log('Processed address books:', addressBooks.value)
   } catch (err) {
-    error.value = err.response?.data?.error || 'Failed to load address books'
     console.error('Error fetching address books:', err)
+    error.value = err.response?.data?.error || 'Failed to load address books'
     addressBooks.value = []
   }
 }
@@ -286,11 +291,14 @@ const fetchContacts = async () => {
   loading.value = true
   error.value = null
   try {
+    console.log('Fetching contacts with settings:', authStore.serverSettings)
     const response = await axios.get('/api/contacts/contacts', {
       params: {
         addressBookId: selectedAddressBook.value
       }
     })
+    
+    console.log('Contacts response:', response.data)
     
     if (response.data?.error) {
       error.value = response.data.error
@@ -299,9 +307,10 @@ const fetchContacts = async () => {
     }
     
     contacts.value = Array.isArray(response.data) ? response.data : []
+    console.log('Processed contacts:', contacts.value)
   } catch (err) {
-    error.value = err.response?.data?.error || 'Failed to load contacts'
     console.error('Error fetching contacts:', err)
+    error.value = err.response?.data?.error || 'Failed to load contacts'
     contacts.value = []
   } finally {
     loading.value = false

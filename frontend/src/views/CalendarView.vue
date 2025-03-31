@@ -444,15 +444,15 @@ const fetchEvents = async () => {
   loading.value = true
   error.value = null
   try {
-    const startDate = new Date(currentDate.value.getFullYear(), currentDate.value.getMonth(), 1)
-    const endDate = new Date(currentDate.value.getFullYear(), currentDate.value.getMonth() + 1, 0)
-    
+    console.log('Fetching events with settings:', authStore.serverSettings)
     const response = await axios.get('/api/calendar/events', {
       params: {
-        start: startDate.toISOString(),
-        end: endDate.toISOString()
+        start: formatDate(startDate.value),
+        end: formatDate(endDate.value)
       }
     })
+    
+    console.log('Calendar response:', response.data)
     
     if (response.data?.error) {
       error.value = response.data.error
@@ -461,9 +461,10 @@ const fetchEvents = async () => {
     }
     
     events.value = Array.isArray(response.data) ? response.data : []
+    console.log('Processed events:', events.value)
   } catch (err) {
-    error.value = err.response?.data?.error || 'Failed to load events'
     console.error('Error fetching events:', err)
+    error.value = err.response?.data?.error || 'Failed to load events'
     events.value = []
   } finally {
     loading.value = false
