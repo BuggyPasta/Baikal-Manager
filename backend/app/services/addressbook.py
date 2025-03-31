@@ -73,17 +73,34 @@ class AddressBookService:
             
             # Get the address book directly using the URL
             book_url = urljoin(creds.get('serverUrl', ''), book_path)
-            book = client.addressbook(url=book_url)
+            
+            # First try to get the principal to ensure we have the correct base path
+            principal = client.principal()
+            if not principal:
+                raise ValueError('Failed to get principal')
+            
+            # Get the base path from the principal URL
+            principal_path = str(principal.url)
+            base_path = principal_path.split('/principals/')[0]
+            
+            # Construct the full address book URL
+            full_book_url = urljoin(creds.get('serverUrl', ''), base_path + book_path)
+            
+            # Try to access the address book
+            book = client.addressbook(url=full_book_url)
             
             if not book:
                 raise ValueError('Address book not found')
             
             return [{
                 'id': str(book.url),
-                'name': book.name or 'Default'
+                'name': book.name or 'Default',
+                'url': str(book.url)
             }]
         except caldav.lib.error.DAVError as e:
             raise ValueError(f"Failed to fetch address book: {str(e)}")
+        except Exception as e:
+            raise ValueError(f"Unexpected error fetching address book: {str(e)}")
     
     def get_contacts(self, user_data: Dict, book_id: str = None) -> List[Dict]:
         """Get all contacts from an address book"""

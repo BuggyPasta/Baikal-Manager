@@ -76,12 +76,16 @@ class CalendarService:
             if not calendar:
                 raise ValueError('Calendar not found')
             
+            # Even if the calendar has no events, it's still a valid calendar
             return [{
                 'id': str(calendar.url),
-                'name': calendar.name or 'Calendar'
+                'name': calendar.name or 'Calendar',
+                'url': str(calendar.url)
             }]
         except caldav.lib.error.DAVError as e:
             raise ValueError(f"Failed to fetch calendar: {str(e)}")
+        except Exception as e:
+            raise ValueError(f"Unexpected error fetching calendar: {str(e)}")
     
     def _make_event(self, title: str, start: datetime, end: datetime, description: str = '', 
                     all_day: bool = False, color: str = 'blue', uid: str = None) -> bytes:
