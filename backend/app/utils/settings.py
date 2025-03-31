@@ -36,6 +36,9 @@ def save_settings(user_id: str, settings: Dict[str, Any]) -> None:
     """Save user settings to user store"""
     try:
         get_user_store().update_user(user_id, settings)
+        # Update session data after saving
+        if user_data := get_user_store().get_user(user_id):
+            session['user_data'] = user_data
     except Exception as e:
         logger.error(f"Failed to save settings for user {user_id}: {str(e)}")
         raise
@@ -51,12 +54,25 @@ def update_settings(user_id: str, category: str, settings: Dict) -> None:
             get_user_store().update_user(user_id, {'baikal_credentials': settings})
         elif category == 'app':
             get_user_store().update_user(user_id, {'app_settings': settings})
+        # Update session data after updating
+        if user_data := get_user_store().get_user(user_id):
+            session['user_data'] = user_data
     except Exception as e:
         logger.error(f"Failed to update {category} settings for user {user_id}: {str(e)}")
         raise
 
 def get_user_data() -> Optional[Dict]:
-    """Get user data from user store using session user_id"""
+    """Get user data from session or user store"""
     if not (user_id := session.get('user_id')):
         return None
-    return get_user_store().get_user(user_id) 
+        
+    # Try to get data from session first
+    if user_data := session.get('user_data'):
+        return user_data
+        
+    # If not in session, get from store and update session
+    if user_data := get_user_store().get_user(user_id):
+        session['user_data'] = user_data
+        return user_data
+        
+    return None 

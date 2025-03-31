@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, session
 from ..utils.user_store import get_user_store
 from werkzeug.security import generate_password_hash, check_password_hash
+from ..utils.settings import load_settings
 
 bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
@@ -33,6 +34,7 @@ def register():
         )
         
         session['user_id'] = user_data['username']
+        session['user_data'] = sanitize_user_data(user_data)
         return jsonify({
             'message': 'User registered',
             'user': sanitize_user_data(user_data)
@@ -57,6 +59,7 @@ def login():
         
         user_store.update_last_login(request.json['username'])
         session['user_id'] = user_data['username']
+        session['user_data'] = sanitize_user_data(user_data)
         
         return jsonify({
             'message': 'Login successful',
@@ -68,7 +71,7 @@ def login():
 @bp.route('/logout', methods=['POST'])
 def logout():
     """Logout the current user."""
-    session.pop('user_id', None)
+    session.clear()
     return jsonify({'message': 'Logged out'})
 
 @bp.route('/check', methods=['GET'])
@@ -80,9 +83,11 @@ def check_auth():
     try:
         user_store = get_user_store()
         if not (user_data := user_store.get_user(user_id)):
-            session.pop('user_id', None)
+            session.clear()
             return jsonify({'error': 'User not found'}), 401
         
+        # Update session with latest user data
+        session['user_data'] = sanitize_user_data(user_data)
         return jsonify({'user': sanitize_user_data(user_data)})
     except Exception as e:
         return jsonify({'error': 'Authentication check failed'}), 500
@@ -96,7 +101,7 @@ def delete_account():
     try:
         user_store = get_user_store()
         if user_store.delete_user(user_id):
-            session.pop('user_id', None)
+            session.clear()
             return jsonify({'message': 'Account deleted'})
         return jsonify({'error': 'Account not found'}), 404
     except Exception as e:
