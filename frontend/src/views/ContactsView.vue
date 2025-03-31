@@ -378,15 +378,11 @@ const exportContacts = async () => {
   }
 }
 
-// Watch for address book changes to fetch new contacts
-watch(selectedAddressBook, () => {
-  if (hasServerSettings.value) {
-    fetchContacts()
-  }
-})
-
 // Initial load
 onMounted(async () => {
+  // Ensure settings are loaded
+  await authStore.ensureSettings()
+  
   if (hasServerSettings.value) {
     await fetchAddressBooks()
     await fetchContacts()
@@ -394,4 +390,15 @@ onMounted(async () => {
     error.value = 'Server settings not configured. Please configure Baikal settings first.'
   }
 })
+
+// Watch for server settings changes
+watch(() => authStore.serverSettings, (newSettings) => {
+  if (newSettings?.serverUrl) {
+    error.value = null
+    fetchAddressBooks()
+    fetchContacts()
+  } else {
+    error.value = 'Server settings not configured. Please configure Baikal settings first.'
+  }
+}, { immediate: true })
 </script> 

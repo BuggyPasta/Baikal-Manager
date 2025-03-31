@@ -211,7 +211,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
@@ -243,26 +243,38 @@ const appSettings = ref({
 // Load current settings
 const loadSettings = async () => {
   try {
+    loadingMessage.value = 'Loading settings...'
     const settings = await authStore.getSettings()
-    serverSettings.value = {
-      serverUrl: settings.serverUrl || '',
-      authType: settings.authType || 'basic',
-      username: settings.username || '',
-      password: settings.password || '',
-      addressBookPath: settings.addressBookPath || '',
-      calendarPath: settings.calendarPath || ''
+    
+    // Load server settings
+    if (settings?.baikal) {
+      serverSettings.value = { ...settings.baikal }
+    } else if (authStore.serverSettings) {
+      serverSettings.value = { ...authStore.serverSettings }
     }
-    userSettings.value = {
-      fullName: authStore.user?.fullName || '',
-      username: authStore.user?.username || '',
-      password: ''
+    
+    // Load user settings
+    if (settings?.user) {
+      userSettings.value = {
+        fullName: settings.user.fullName || '',
+        username: settings.user.username || '',
+        password: '' // Don't load password
+      }
     }
-    appSettings.value = {
-      theme: settings.theme || 'light',
-      timeout: settings.timeout || 10
+    
+    // Load app settings
+    if (settings?.app) {
+      appSettings.value = {
+        theme: settings.app.theme || 'light',
+        timeout: settings.app.timeout || 10
+      }
     }
-  } catch (error) {
-    errorMessage.value = 'Failed to load settings: ' + error.message
+    
+    loadingMessage.value = ''
+  } catch (err) {
+    errorMessage.value = 'Failed to load settings'
+    console.error('Error loading settings:', err)
+    loadingMessage.value = ''
   }
 }
 
@@ -394,6 +406,15 @@ const handleThemeChange = () => {
   localStorage.setItem('theme', appSettings.value.theme)
 }
 
-// Load settings on component mount
-loadSettings()
+// Initialize settings on mount
+onMounted(async () => {
+  await loadSettings()
+})
+
+// Watch for server settings changes
+watch(() => authStore.serverSettings, (newSettings) => {
+  if (newSettings) {
+    serverSettings.value = { ...newSettings }
+  }
+}, { immediate: true })
 </script> 

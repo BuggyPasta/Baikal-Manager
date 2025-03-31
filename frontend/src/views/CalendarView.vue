@@ -488,9 +488,12 @@ watch([currentView, currentDate], () => {
 })
 
 // Initialize calendar immediately
-onMounted(() => {
+onMounted(async () => {
   // Always initialize with empty events
   events.value = []
+  
+  // Ensure settings are loaded
+  await authStore.ensureSettings()
   
   // Only fetch events if we have server settings
   if (hasServerSettings.value) {
@@ -499,6 +502,16 @@ onMounted(() => {
     error.value = 'Server settings not configured. Please configure Baikal settings first.'
   }
 })
+
+// Watch for server settings changes
+watch(() => authStore.serverSettings, (newSettings) => {
+  if (newSettings?.serverUrl) {
+    error.value = null
+    fetchEvents()
+  } else {
+    error.value = 'Server settings not configured. Please configure Baikal settings first.'
+  }
+}, { immediate: true })
 
 // Format event date and time for list view
 function formatEventDateTime(event) {

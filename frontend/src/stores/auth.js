@@ -82,6 +82,11 @@ export const useAuthStore = defineStore('auth', {
         const response = await axios.get('/api/auth/check')
         this.user = response.data.user
         if (this.user) {
+          // Update server settings from session if available
+          if (response.data.serverSettings) {
+            this.serverSettings = response.data.serverSettings
+            localStorage.setItem('serverSettings', JSON.stringify(this.serverSettings))
+          }
           this.startActivityMonitor()
         }
         return !!this.user
