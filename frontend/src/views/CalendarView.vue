@@ -147,7 +147,7 @@
             <!-- Events list -->
             <div class="mt-1 space-y-1">
               <div
-                v-for="event in getDayEvents(day.date)"
+                v-for="event in getEventsForDay(day.date)"
                 :key="event.id"
                 @click="openEventModal(day.date, event)"
                 class="text-xs p-1 rounded cursor-pointer"
@@ -423,10 +423,10 @@ function openNewEventModal(date = null) {
   showEventModal.value = true
 }
 
-function openEventModal(event) {
-  selectedEvent.value = event
-  selectedDate.value = new Date(event.start)
+function openEventModal(date, event = null) {
   showEventModal.value = true
+  selectedDate.value = date
+  selectedEvent.value = event
 }
 
 function closeEventModal() {
@@ -445,10 +445,28 @@ const fetchEvents = async () => {
   error.value = null
   try {
     console.log('Fetching events with settings:', authStore.serverSettings)
+    
+    // Calculate date range based on current view
+    let startDate, endDate
+    if (currentView.value === 'month') {
+      startDate = startOfMonth(currentDate.value)
+      endDate = endOfMonth(currentDate.value)
+    } else if (currentView.value === 'week') {
+      startDate = startOfWeek(currentDate.value, { weekStartsOn: 1 })
+      endDate = endOfWeek(currentDate.value, { weekStartsOn: 1 })
+    } else if (currentView.value === 'day') {
+      startDate = new Date(currentDate.value.setHours(0, 0, 0, 0))
+      endDate = new Date(currentDate.value.setHours(23, 59, 59, 999))
+    } else {
+      // For list view, show events for the next 30 days
+      startDate = new Date()
+      endDate = addDays(startDate, 30)
+    }
+
     const response = await axios.get('/api/calendar/events', {
       params: {
-        start: formatDate(startDate.value),
-        end: formatDate(endDate.value)
+        start: startDate.toISOString(),
+        end: endDate.toISOString()
       }
     })
     
@@ -637,5 +655,30 @@ function getEventStyles(event) {
 
 function getMinutesFromMidnight(date) {
   return date.getHours() * 60 + date.getMinutes()
+}
+
+const isToday = (date) => {
+  const today = new Date()
+  return date.getDate() === today.getDate() &&
+         date.getMonth() === today.getMonth() &&
+         date.getFullYear() === today.getFullYear()
+}
+
+const hasEvents = (date) => {
+  return events.value.some(event => {
+    const eventDate = new Date(event.start)
+    return eventDate.getDate() === date.getDate() &&
+           eventDate.getMonth() === date.getMonth() &&
+           eventDate.getFullYear() === date.getFullYear()
+  })
+}
+
+const getEventsForDay = (date) => {
+  return events.value.filter(event => {
+    const eventDate = new Date(event.start)
+    return eventDate.getDate() === date.getDate() &&
+           eventDate.getMonth() === date.getMonth() &&
+           eventDate.getFullYear() === date.getFullYear()
+  })
 }
 </script> 
