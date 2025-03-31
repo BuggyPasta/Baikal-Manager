@@ -88,10 +88,14 @@ export const useAuthStore = defineStore('auth', {
             localStorage.setItem('serverSettings', JSON.stringify(this.serverSettings))
           }
           this.startActivityMonitor()
+          // Update last login time
+          this.user.lastLogin = new Date().toISOString()
         }
         return !!this.user
       } catch (err) {
         this.user = null
+        this.serverSettings = null
+        localStorage.removeItem('serverSettings')
         return false
       }
     },
@@ -149,11 +153,24 @@ export const useAuthStore = defineStore('auth', {
       // First try to load from localStorage
       const stored = localStorage.getItem('serverSettings')
       if (stored) {
-        this.serverSettings = JSON.parse(stored)
+        try {
+          this.serverSettings = JSON.parse(stored)
+        } catch (e) {
+          console.error('Error parsing stored server settings:', e)
+          localStorage.removeItem('serverSettings')
+        }
       }
       
       // Then get latest from server and sync
-      await this.getSettings()
+      try {
+        await this.getSettings()
+      } catch (err) {
+        console.error('Error fetching settings:', err)
+        // If server fetch fails, use cached settings if available
+        if (!this.serverSettings) {
+          throw new Error('No server settings available')
+        }
+      }
       
       return {
         settings: this.settings,
