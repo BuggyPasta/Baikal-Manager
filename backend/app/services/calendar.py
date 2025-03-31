@@ -6,6 +6,7 @@ import pytz
 import caldav
 from urllib.parse import urljoin
 from .baikal_client import BaikalClient
+from ..utils.settings import log_error
 
 class CalendarService:
     """Service for handling calendar operations"""
@@ -35,44 +36,50 @@ class CalendarService:
             raise ValueError(f"DAV connection error: {str(e)}")
     
     def _get_calendar(self, user_data: Dict, calendar_id: str = None) -> Optional[caldav.Calendar]:
+        if not user_data:
+            raise ValueError('User data required')
         client = self._get_client(user_data)
-        
         try:
-            # Get all calendars from all homes
-            calendars = []
-            for home in client.principal().calendar_homes():
-                try:
-                    calendars.extend(home.calendars())
-                except caldav.lib.error.DAVError as e:
-                    # Skip homes that can't be accessed
-                    continue
+            # Get calendar path from user settings
+            creds = user_data.get('baikal_credentials', {})
+            calendar_path = creds.get('calendarPath', '/calendars/test/default/')
             
-            if not calendars:
-                raise ValueError('No accessible calendars found')
+            # Log the path we're trying to access
+            log_error(user_data.get('user_id', 'unknown'), f"Attempting to access calendar at path: {calendar_path}")
             
-            if not calendar_id:
-                return calendars[0]
-                
-            if not (calendar := next((c for c in calendars if str(c.url) == calendar_id), None)):
+            # Get the calendar directly using the path
+            calendar = client.principal().calendar(calendar_path)
+            
+            if not calendar:
                 raise ValueError('Calendar not found')
-            return calendar
             
+            # Log successful access
+            log_error(user_data.get('user_id', 'unknown'), f"Successfully accessed calendar at path: {calendar_path}")
+            return calendar
         except caldav.lib.error.DAVError as e:
-            raise ValueError(f"Failed to access calendars: {str(e)}")
+            log_error(user_data.get('user_id', 'unknown'), f"Failed to access calendar: {str(e)}")
+            raise ValueError(f"Failed to access calendar: {str(e)}")
     
     def get_calendars(self, user_data: Dict) -> List[Dict]:
         """Get list of available calendars"""
         client = self._get_client(user_data)
         try:
-            calendars = []
-            for home in client.principal().calendar_homes():
-                calendars.extend(home.calendars())
-            return [
-                {'id': str(cal.url), 'name': cal.name or 'Calendar'} 
-                for cal in calendars
-            ]
+            # Get calendar path from user settings
+            creds = user_data.get('baikal_credentials', {})
+            calendar_path = creds.get('calendarPath', '/calendars/test/default/')
+            
+            # Get the calendar directly using the path
+            calendar = client.principal().calendar(calendar_path)
+            
+            if not calendar:
+                raise ValueError('Calendar not found')
+            
+            return [{
+                'id': str(calendar.url),
+                'name': calendar.name or 'Calendar'
+            }]
         except caldav.lib.error.DAVError as e:
-            raise ValueError(f"Failed to fetch calendars: {str(e)}")
+            raise ValueError(f"Failed to fetch calendar: {str(e)}")
     
     def _make_event(self, title: str, start: datetime, end: datetime, description: str = '', 
                     all_day: bool = False, color: str = 'blue', uid: str = None) -> bytes:
@@ -130,6 +137,9 @@ class CalendarService:
             else:
                 end_dt = pytz.UTC.localize(end_dt)
             
+            # Log the date range we're querying
+            log_error(user_data.get('user_id', 'unknown'), f"Fetching events from {start_dt} to {end_dt}")
+            
             events = calendar.date_search(
                 start=start_dt,
                 end=end_dt,
@@ -137,8 +147,12 @@ class CalendarService:
                 comp_filter="VEVENT"  # Explicitly request only events
             )
             
+            # Log the number of events found
+            log_error(user_data.get('user_id', 'unknown'), f"Found {len(events)} events")
+            
             return [self._event_to_json(event) for event in events]
         except caldav.lib.error.DAVError as e:
+            log_error(user_data.get('user_id', 'unknown'), f"Failed to fetch events: {str(e)}")
             raise ValueError(f"Failed to fetch events: {str(e)}")
         except ValueError as e:
             raise ValueError(f"Invalid date format: {str(e)}")
@@ -151,9 +165,13 @@ class CalendarService:
             start = vevent.get('dtstart').dt
             end = vevent.get('dtend', vevent.get('dtstart')).dt
             
+            # Handle both datetime and date objects
             if isinstance(start, datetime):
                 start = start.astimezone(pytz.UTC)
                 end = end.astimezone(pytz.UTC)
+                all_day = False
+            else:
+                all_day = True
             
             return {
                 'id': str(event.url),
@@ -161,7 +179,7 @@ class CalendarService:
                 'description': str(vevent.get('description', '')),
                 'start': start.isoformat(),
                 'end': end.isoformat(),
-                'allDay': not isinstance(start, datetime),
+                'allDay': all_day,
                 'color': str(vevent.get('color', 'blue')),
                 'calendarId': str(event.calendar.url)
             }
@@ -229,18 +247,25 @@ class CalendarService:
         except Exception as e:
             raise ValueError(f"Failed to process event data: {str(e)}")
     
-    def delete_event(self, user_data: Dict, calendar_id: str, event_id: str) -> None:
+    def delete_event(self, user_data: Dict, event_id: str, calendar_id: str) -> Dict:
         """Delete a calendar event"""
         calendar = self._get_calendar(user_data, calendar_id)
         if not calendar:
             raise ValueError('Calendar not found')
             
         try:
-            for event in calendar.events():
-                if str(event.url) == event_id:
-                    event.delete()
-                    return
+            # Find the event
+            event = None
+            for obj in calendar.objects():
+                if str(obj.url) == event_id:
+                    event = obj
+                    break
                     
-            raise ValueError('Event not found')
+            if not event:
+                raise ValueError('Event not found')
+            
+            # Delete the event
+            event.delete()
+            return {'message': 'Event deleted'}
         except caldav.lib.error.DAVError as e:
             raise ValueError(f"Failed to delete event: {str(e)}") 

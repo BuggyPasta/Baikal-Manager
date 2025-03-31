@@ -40,42 +40,64 @@ class AddressBookService:
             raise ValueError('User data required')
         client = self._get_client(user_data)
         try:
-            books = client.principal().address_books()
-            if not books:
-                raise ValueError('No address books found')
+            # Get address book path from user settings
+            creds = user_data.get('baikal_credentials', {})
+            book_path = creds.get('addressBookPath', '/addressbooks/test/default/')
             
-            if book_id:
-                # Normalize URLs for comparison
-                book_id = str(book_id)
-                for book in books:
-                    if str(book.url) == book_id:
-                        return book
+            # Log the path we're trying to access
+            from ..utils.settings import log_error
+            log_error(user_data.get('user_id', 'unknown'), f"Attempting to access address book at path: {book_path}")
+            
+            # Get the address book directly using the path
+            book = client.principal().addressbook(book_path)
+            
+            if not book:
                 raise ValueError('Address book not found')
-            return books[0]
+            
+            # Log successful access
+            log_error(user_data.get('user_id', 'unknown'), f"Successfully accessed address book at path: {book_path}")
+            return book
         except caldav.lib.error.DAVError as e:
-            raise ValueError(f"Failed to access address books: {str(e)}")
+            from ..utils.settings import log_error
+            log_error(user_data.get('user_id', 'unknown'), f"Failed to access address book: {str(e)}")
+            raise ValueError(f"Failed to access address book: {str(e)}")
     
     def get_books(self, user_data: Dict) -> List[Dict]:
         """Get list of available address books"""
         client = self._get_client(user_data)
         try:
-            return [
-                {'id': str(book.url), 'name': book.name or 'Default'} 
-                for book in client.principal().address_books()
-            ]
+            # Get address book path from user settings
+            creds = user_data.get('baikal_credentials', {})
+            book_path = creds.get('addressBookPath', '/addressbooks/test/default/')
+            
+            # Get the address book directly using the path
+            book = client.principal().addressbook(book_path)
+            
+            if not book:
+                raise ValueError('Address book not found')
+            
+            return [{
+                'id': str(book.url),
+                'name': book.name or 'Default'
+            }]
         except caldav.lib.error.DAVError as e:
-            raise ValueError(f"Failed to fetch address books: {str(e)}")
+            raise ValueError(f"Failed to fetch address book: {str(e)}")
     
-    def get_contacts(self, user_data: Dict, book_id: str) -> List[Dict]:
+    def get_contacts(self, user_data: Dict, book_id: str = None) -> List[Dict]:
         """Get all contacts from an address book"""
         book = self._get_book(user_data, book_id)
         contacts = []
         try:
+            # Log that we're fetching contacts
+            from ..utils.settings import log_error
+            log_error(user_data.get('user_id', 'unknown'), "Starting to fetch contacts")
+            
             for obj in book.objects():
                 try:
                     vcard = vobject.readOne(obj.data)
                     # Skip invalid vCards
                     if not hasattr(vcard, 'fn'):
+                        log_error(user_data.get('user_id', 'unknown'), "Skipping contact without FN field")
                         continue
                     contact_data = self.vcard.to_json(vcard)
                     contact_data['addressBookId'] = str(book.url)
@@ -83,8 +105,13 @@ class AddressBookService:
                 except Exception as e:
                     from ..utils.settings import log_error
                     log_error(user_data.get('user_id', 'unknown'), f"Failed to parse contact: {str(e)}")
+            
+            # Log the number of contacts found
+            log_error(user_data.get('user_id', 'unknown'), f"Found {len(contacts)} contacts")
             return contacts
         except caldav.lib.error.DAVError as e:
+            from ..utils.settings import log_error
+            log_error(user_data.get('user_id', 'unknown'), f"Failed to fetch contacts: {str(e)}")
             raise ValueError(f"Failed to fetch contacts: {str(e)}")
     
     def _save_contact(self, book: object, contact_data: Dict) -> Dict:
@@ -152,23 +179,30 @@ class AddressBookService:
         """Import contacts from vCard data"""
         book = self._get_book(user_data, book_id)
         imported = 0
-        for vcard in self.vcard.parse_vcards(vcard_data):
-            try:
-                # Ensure proper vCard version and required fields
-                vcard.version.value = '3.0'
-                if not hasattr(vcard, 'uid'):
-                    vcard.add('uid')
-                    vcard.uid.value = str(uuid.uuid4())
-                if not hasattr(vcard, 'rev'):
-                    vcard.add('rev')
-                vcard.rev.value = datetime.now().strftime('%Y%m%dT%H%M%SZ')
-                
-                book.add_vcard(vcard.serialize())
-                imported += 1
-            except Exception as e:
-                from ..utils.settings import log_error
-                log_error(user_data.get('user_id', 'unknown'), f"Import failed: {str(e)}")
-        return imported
+        try:
+            for vcard in self.vcard.parse_vcards(vcard_data):
+                try:
+                    # Ensure proper vCard version and required fields
+                    vcard.version.value = '3.0'
+                    if not hasattr(vcard, 'uid'):
+                        vcard.add('uid')
+                        vcard.uid.value = str(uuid.uuid4())
+                    if not hasattr(vcard, 'rev'):
+                        vcard.add('rev')
+                    vcard.rev.value = datetime.now().strftime('%Y%m%dT%H%M%SZ')
+                    
+                    # Ensure required fields
+                    if not hasattr(vcard, 'fn'):
+                        vcard.add('fn').value = 'Unknown Contact'
+                    
+                    book.add_vcard(vcard.serialize())
+                    imported += 1
+                except Exception as e:
+                    from ..utils.settings import log_error
+                    log_error(user_data.get('user_id', 'unknown'), f"Import failed: {str(e)}")
+            return imported
+        except caldav.lib.error.DAVError as e:
+            raise ValueError(f"Failed to import contacts: {str(e)}")
     
     def export_contacts(self, user_data: Dict, book_id: str) -> str:
         """Export contacts to vCard format"""
