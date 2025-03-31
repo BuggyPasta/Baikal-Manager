@@ -100,12 +100,23 @@
             <p class="form-hint">e.g /calendars/YOUR_BAIKAL_USERNAME/default/</p>
           </div>
           
-          <div class="flex space-x-4">
-            <button type="submit" class="btn-primary">
-              Save Server Settings
+          <div class="form-actions">
+            <button 
+              type="button" 
+              class="btn btn-secondary" 
+              @click="testConnection"
+              :disabled="testingConnection"
+            >
+              <span v-if="testingConnection" class="spinner-border spinner-border-sm me-1"></span>
+              {{ testingConnection ? 'Testing...' : 'Test Connection' }}
             </button>
-            <button type="button" @click="testConnection" class="btn-secondary">
-              Test Connection
+            <button 
+              type="submit" 
+              class="btn btn-primary"
+              :disabled="saving"
+            >
+              <span v-if="saving" class="spinner-border spinner-border-sm me-1"></span>
+              {{ saving ? 'Saving...' : 'Save Server Settings' }}
             </button>
           </div>
         </form>

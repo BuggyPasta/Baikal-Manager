@@ -264,6 +264,11 @@ const fetchAddressBooks = async () => {
 
   try {
     const response = await axios.get('/api/contacts/address-books')
+    if (response.data?.error) {
+      error.value = response.data.error
+      addressBooks.value = []
+      return
+    }
     addressBooks.value = response.data || []
   } catch (err) {
     error.value = err.response?.data?.error || 'Failed to load address books'
@@ -286,6 +291,13 @@ const fetchContacts = async () => {
         addressBookId: selectedAddressBook.value
       }
     })
+    
+    if (response.data?.error) {
+      error.value = response.data.error
+      contacts.value = []
+      return
+    }
+    
     contacts.value = Array.isArray(response.data) ? response.data : []
   } catch (err) {
     error.value = err.response?.data?.error || 'Failed to load contacts'
