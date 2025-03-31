@@ -250,8 +250,7 @@ class BaikalClient:
             return False, msg
 
     def get_client(self) -> Tuple[bool, Union[caldav.DAVClient, str]]:
-        """Thread-safe access to get the cached client or return error tuple"""
-        client = self.client
-        if not client:
-            return False, "Not connected to Baikal server"
-        return True, client 
+        """Get the current client or return an error message"""
+        if not self.client:
+            return False, "No client initialized. Call verify_connection first."
+        return True, self.client 
