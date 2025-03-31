@@ -204,6 +204,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import ContactModal from '@/components/ContactModal.vue'
 import { useAuthStore } from '@/stores/auth'
+import axios from 'axios'
 
 const authStore = useAuthStore()
 
@@ -248,34 +249,31 @@ const filteredContacts = computed(() => {
 })
 
 // Methods
-async function fetchContacts() {
-  loading.value = true
-  error.value = null
+const fetchAddressBooks = async () => {
   try {
-    // Check if we have valid server settings
-    if (!authStore.serverSettings?.serverUrl) {
-      error.value = 'Server settings not configured. Please configure Baikal settings first.'
-      return
-    }
-    
-    const response = await fetch('/api/contacts')
-    if (!response.ok) throw new Error('Failed to fetch contacts')
-    contacts.value = await response.json()
+    const response = await axios.get('/api/contacts/address-books')
+    addressBooks.value = response.data
   } catch (err) {
-    error.value = 'Failed to load contacts. Please try again.'
-    console.error('Error fetching contacts:', err)
-  } finally {
-    loading.value = false
+    error.value = err.response?.data?.error || 'Failed to load address books'
+    console.error('Error fetching address books:', err)
   }
 }
 
-async function fetchAddressBooks() {
+const fetchContacts = async () => {
+  loading.value = true
+  error.value = null
   try {
-    const response = await fetch('/api/contacts/address-books')
-    if (!response.ok) throw new Error('Failed to fetch address books')
-    addressBooks.value = await response.json()
+    const response = await axios.get('/api/contacts/contacts', {
+      params: {
+        addressBookId: selectedAddressBook.value
+      }
+    })
+    contacts.value = response.data
   } catch (err) {
-    console.error('Error fetching address books:', err)
+    error.value = err.response?.data?.error || 'Failed to load contacts'
+    console.error('Error fetching contacts:', err)
+  } finally {
+    loading.value = false
   }
 }
 
@@ -289,124 +287,89 @@ function closeContactModal() {
   selectedContact.value = null
 }
 
-async function saveContact(contactData) {
+const saveContact = async (contactData) => {
   try {
-    const url = contactData.id ? `/api/contacts/${contactData.id}` : '/api/contacts'
-    const method = contactData.id ? 'PUT' : 'POST'
-    
-    const response = await fetch(url, {
-      method,
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(contactData)
-    })
-
-    if (!response.ok) throw new Error('Failed to save contact')
-    
+    if (contactData.id) {
+      await axios.put(`/api/contacts/contacts/${contactData.id}`, contactData)
+    } else {
+      await axios.post('/api/contacts/contacts', contactData)
+    }
     await fetchContacts()
-    closeContactModal()
+    showContactModal.value = false
+    selectedContact.value = null
   } catch (err) {
+    error.value = err.response?.data?.error || 'Failed to save contact'
     console.error('Error saving contact:', err)
-    // TODO: Show error message to user
   }
 }
 
-async function deleteContact(contactId) {
-  if (!confirm('Are you sure you want to delete this contact?')) return
-
+const deleteContact = async (contactId) => {
   try {
-    const response = await fetch(`/api/contacts/${contactId}`, {
-      method: 'DELETE'
+    await axios.delete(`/api/contacts/contacts/${contactId}`, {
+      params: {
+        addressBookId: selectedAddressBook.value
+      }
     })
-
-    if (!response.ok) throw new Error('Failed to delete contact')
-    
     await fetchContacts()
-    closeContactModal()
+    showContactModal.value = false
+    selectedContact.value = null
   } catch (err) {
+    error.value = err.response?.data?.error || 'Failed to delete contact'
     console.error('Error deleting contact:', err)
-    // TODO: Show error message to user
   }
 }
 
-async function handleFileImport(event) {
+const handleFileImport = async (event) => {
   const file = event.target.files[0]
   if (!file) return
 
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('addressBookId', selectedAddressBook.value)
+
   try {
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('addressBookId', selectedAddressBook.value)
-
-    const response = await fetch('/api/contacts/import', {
-      method: 'POST',
-      body: formData
+    await axios.post('/api/contacts/contacts/import', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
     })
-
-    if (!response.ok) throw new Error('Failed to import contacts')
-    
     await fetchContacts()
   } catch (err) {
+    error.value = err.response?.data?.error || 'Failed to import contacts'
     console.error('Error importing contacts:', err)
-    // TODO: Show error message to user
-  } finally {
-    event.target.value = '' // Reset file input
   }
 }
 
-async function exportContacts() {
+const exportContacts = async () => {
   try {
-    const params = new URLSearchParams()
-    if (selectedAddressBook.value) {
-      params.append('addressBookId', selectedAddressBook.value)
-    }
-    if (searchQuery.value) {
-      params.append('query', searchQuery.value)
-    }
-
-    const response = await fetch(`/api/contacts/export?${params}`)
-    if (!response.ok) throw new Error('Failed to export contacts')
-
-    const blob = await response.blob()
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'contacts.csv'
-    document.body.appendChild(a)
-    a.click()
-    window.URL.revokeObjectURL(url)
-    document.body.removeChild(a)
+    const response = await axios.get('/api/contacts/contacts/export', {
+      params: {
+        addressBookId: selectedAddressBook.value
+      },
+      responseType: 'blob'
+    })
+    
+    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', 'contacts.vcf')
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
   } catch (err) {
+    error.value = err.response?.data?.error || 'Failed to export contacts'
     console.error('Error exporting contacts:', err)
-    // TODO: Show error message to user
   }
 }
 
-// Watch for changes
-watch([searchQuery, selectedAddressBook], () => {
-  // No need to refetch, we're filtering client-side
+// Watch for address book changes to fetch new contacts
+watch(selectedAddressBook, () => {
+  fetchContacts()
 })
 
 // Initial load
 onMounted(async () => {
-  try {
-    // Ensure settings are loaded
-    await authStore.ensureSettings()
-    
-    // Then check if we have valid server settings
-    if (!authStore.serverSettings?.serverUrl) {
-      error.value = 'Server settings not configured. Please configure Baikal settings first.'
-      return
-    }
-    
-    await Promise.all([
-      fetchContacts(),
-      fetchAddressBooks()
-    ])
-  } catch (err) {
-    error.value = 'Failed to load settings. Please try again.'
-    console.error('Error loading settings:', err)
-  }
+  await fetchAddressBooks()
+  await fetchContacts()
 })
 </script> 

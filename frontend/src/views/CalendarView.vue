@@ -273,6 +273,7 @@ import EventModal from '@/components/EventModal.vue'
 import arrowPrevious from '@/assets/arrow-previous.svg'
 import arrowNext from '@/assets/arrow-next.svg'
 import { useAuthStore } from '@/stores/auth'
+import axios from 'axios'
 
 // Initialize stores
 const authStore = useAuthStore()
@@ -418,65 +419,53 @@ function closeEventModal() {
   selectedDate.value = null
 }
 
-async function fetchEvents() {
+const fetchEvents = async () => {
   loading.value = true
   error.value = null
   try {
-    const response = await fetch('/api/calendar/events', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
+    const startDate = new Date(currentDate.value.getFullYear(), currentDate.value.getMonth(), 1)
+    const endDate = new Date(currentDate.value.getFullYear(), currentDate.value.getMonth() + 1, 0)
     
-    if (!response.ok) {
-      const data = await response.json();
-      if (response.status === 401 || response.status === 403) {
-        // Not authenticated or no Baikal credentials - just show empty calendar
-        events.value = [];
-        return;
+    const response = await axios.get('/api/calendar/events', {
+      params: {
+        start: startDate.toISOString(),
+        end: endDate.toISOString()
       }
-      throw new Error(data.error || 'Failed to fetch events');
-    }
-    
-    const data = await response.json();
-    events.value = data;
+    })
+    events.value = response.data
   } catch (err) {
-    console.error('Error fetching events:', err);
-    error.value = 'Failed to load events. Calendar will be shown without events.';
-    events.value = [];
+    error.value = err.response?.data?.error || 'Failed to load events'
+    console.error('Error fetching events:', err)
   } finally {
-    loading.value = false;
+    loading.value = false
   }
 }
 
-async function saveEvent(eventData) {
+const saveEvent = async (eventData) => {
   try {
-    if (selectedEvent.value) {
-      // TODO: Implement update event API call
-      const index = events.value.findIndex(e => e.id === selectedEvent.value.id)
-      if (index !== -1) {
-        events.value[index] = { ...eventData, id: selectedEvent.value.id }
-      }
+    if (eventData.id) {
+      await axios.put(`/api/calendar/events/${eventData.id}`, eventData)
     } else {
-      // TODO: Implement create event API call
-      events.value.push({ ...eventData, id: Date.now() })
+      await axios.post('/api/calendar/events', eventData)
     }
-    closeEventModal()
+    await fetchEvents()
+    showEventModal.value = false
+    selectedEvent.value = null
   } catch (err) {
+    error.value = err.response?.data?.error || 'Failed to save event'
     console.error('Error saving event:', err)
-    // TODO: Show error message to user
   }
 }
 
-async function deleteEvent(eventId) {
+const deleteEvent = async (eventId) => {
   try {
-    // TODO: Implement delete event API call
-    events.value = events.value.filter(e => e.id !== eventId)
-    closeEventModal()
+    await axios.delete(`/api/calendar/events/${eventId}`)
+    await fetchEvents()
+    showEventModal.value = false
+    selectedEvent.value = null
   } catch (err) {
+    error.value = err.response?.data?.error || 'Failed to delete event'
     console.error('Error deleting event:', err)
-    // TODO: Show error message to user
   }
 }
 
