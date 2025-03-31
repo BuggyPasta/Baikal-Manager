@@ -1,23 +1,63 @@
 import json
 import time
+import os
+import fcntl
+import logging
 from typing import Dict, Optional, List
 from . import encryption
 from ..config.config import Config
 
+# Configure logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
 class UserStore:
     def __init__(self):
-        pass
+        self.file_path = Config.get_path('users.json')
+        self.backup_path = Config.get_path('users.json.bak')
+        os.makedirs(os.path.dirname(self.file_path), exist_ok=True)
 
     def _load_users(self) -> List[Dict]:
         try:
-            with open(Config.get_path('users.json'), 'r') as f:
-                return json.load(f)['users']
-        except:
+            with open(self.file_path, 'r') as f:
+                # Get an exclusive lock for reading
+                fcntl.flock(f.fileno(), fcntl.LOCK_SH)
+                try:
+                    data = json.load(f)
+                    return data.get('users', [])
+                finally:
+                    fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+        except FileNotFoundError:
+            return []
+        except json.JSONDecodeError as e:
+            logger.error(f"Error reading users.json: {str(e)}")
+            # Try to recover from backup
+            if os.path.exists(self.backup_path):
+                logger.info("Attempting to recover from backup")
+                with open(self.backup_path, 'r') as f:
+                    try:
+                        return json.load(f).get('users', [])
+                    except:
+                        logger.error("Backup recovery failed")
             return []
 
     def _save_users(self, users: List[Dict]) -> None:
-        with open(Config.get_path('users.json'), 'w') as f:
-            json.dump({'users': users}, f)
+        # Create a backup of the current file if it exists
+        if os.path.exists(self.file_path):
+            try:
+                with open(self.file_path, 'r') as src, open(self.backup_path, 'w') as dst:
+                    dst.write(src.read())
+            except Exception as e:
+                logger.error(f"Failed to create backup: {str(e)}")
+
+        # Save the new data with locking
+        with open(self.file_path, 'w') as f:
+            # Get an exclusive lock for writing
+            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+            try:
+                json.dump({'users': users}, f, indent=2)
+            finally:
+                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
 
     def get_users(self) -> List[Dict]:
         return [{
@@ -29,7 +69,12 @@ class UserStore:
     def get_user(self, username: str) -> Optional[Dict]:
         if user := next((u for u in self._load_users() if u['username'] == username), None):
             if creds := user.get('baikal_credentials'):
-                creds['password'] = encryption.decrypt(creds['password'])
+                try:
+                    if 'password' in creds:
+                        creds['password'] = encryption.decrypt(creds['password'])
+                except Exception as e:
+                    logger.error(f"Failed to decrypt credentials for user {username}: {str(e)}")
+                    creds['password'] = ''
             return user
         return None
 
@@ -56,12 +101,23 @@ class UserStore:
         if not (user := next((u for u in users if u['username'] == username), None)):
             raise ValueError('User not found')
         
-        user.update(data)
-        if creds := user.get('baikal_credentials'):
-            if 'password' in creds:
-                creds['password'] = encryption.encrypt(creds['password'])
+        # Create a copy of the user data to avoid modifying the original
+        updated_user = user.copy()
+        updated_user.update(data)
         
+        # Handle Baikal credentials separately to ensure proper encryption
+        if creds := updated_user.get('baikal_credentials'):
+            if 'password' in creds:
+                try:
+                    creds['password'] = encryption.encrypt(creds['password'])
+                except Exception as e:
+                    logger.error(f"Failed to encrypt credentials for user {username}: {str(e)}")
+                    raise ValueError("Failed to encrypt credentials")
+        
+        # Update the user in the list
+        users = [updated_user if u['username'] == username else u for u in users]
         self._save_users(users)
+        
         return self.get_user(username)
 
     def delete_user(self, username: str) -> bool:
