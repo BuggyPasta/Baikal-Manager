@@ -23,10 +23,7 @@ def load_settings(user_id: str) -> Dict[str, Any]:
     """Load user settings from user store"""
     try:
         if user_data := get_user_store().get_user(user_id):
-            return {
-                'baikal_credentials': user_data.get('baikal_credentials', {}),
-                'app_settings': user_data.get('app_settings', {})
-            }
+            return user_data
         return {}
     except Exception as e:
         logger.error(f"Failed to load settings for user {user_id}: {str(e)}")

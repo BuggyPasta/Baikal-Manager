@@ -75,13 +75,9 @@ def login():
         session['user_id'] = user_data['username']
         session['user_data'] = sanitize_user_data(user_data)
         
-        # Load settings from user store
-        settings = load_settings(user_data['username'])
-        
         return jsonify({
             'message': 'Login successful',
-            'user': sanitize_user_data(user_data),
-            'settings': settings
+            'user': sanitize_user_data(user_data)
         })
     except Exception as e:
         return jsonify({'error': 'Login failed'}), 500
@@ -107,12 +103,8 @@ def check_auth():
         # Update session with latest user data
         session['user_data'] = sanitize_user_data(user_data)
         
-        # Load settings from user store
-        settings = load_settings(user_id)
-        
         return jsonify({
-            'user': sanitize_user_data(user_data),
-            'settings': settings
+            'user': sanitize_user_data(user_data)
         })
     except Exception as e:
         return jsonify({'error': 'Authentication check failed'}), 500
