@@ -64,8 +64,11 @@ def save_baikal_settings():
             'details': f"Required fields: {', '.join(required_fields)}"
         }), 400
     
+    # Create a copy of the data to avoid modifying the original
+    settings_data = data.copy()
+    
     # Verify connection before saving
-    success, error_message = baikal_client.verify_connection(data)
+    success, error_message = baikal_client.verify_connection(settings_data)
     if not success:
         return jsonify({
             'error': 'Connection verification failed',
@@ -74,11 +77,11 @@ def save_baikal_settings():
     
     try:
         # Save settings only if connection verification passed
-        get_user_store().update_user(user_id, {'baikal_credentials': data})
+        get_user_store().update_user(user_id, {'baikal_credentials': settings_data})
         logger.debug(f"Settings saved successfully for user {user_id}")
         return jsonify({
             'message': 'Settings saved successfully',
-            'settings': {k: v for k, v in data.items() if k != 'password'}
+            'settings': {k: v for k, v in settings_data.items() if k != 'password'}
         })
     except Exception as e:
         logger.error(f"Failed to save settings for user {user_id}: {str(e)}")

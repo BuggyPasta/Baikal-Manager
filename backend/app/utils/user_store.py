@@ -4,7 +4,6 @@ import os
 import fcntl
 import logging
 from typing import Dict, Optional, List
-from . import encryption
 from ..config.config import Config
 
 # Configure logging
@@ -68,14 +67,8 @@ class UserStore:
 
     def get_user(self, username: str) -> Optional[Dict]:
         if user := next((u for u in self._load_users() if u['username'] == username), None):
-            if creds := user.get('baikal_credentials'):
-                try:
-                    if 'password' in creds:
-                        creds['password'] = encryption.decrypt(creds['password'])
-                except Exception as e:
-                    logger.error(f"Failed to decrypt credentials for user {username}: {str(e)}")
-                    creds['password'] = ''
-            return user
+            # Create a copy of the user data to avoid modifying the original
+            return user.copy()
         return None
 
     def create_user(self, username: str, password: str, full_name: str) -> Dict:
@@ -104,15 +97,6 @@ class UserStore:
         # Create a copy of the user data to avoid modifying the original
         updated_user = user.copy()
         updated_user.update(data)
-        
-        # Handle Baikal credentials separately to ensure proper encryption
-        if creds := updated_user.get('baikal_credentials'):
-            if 'password' in creds:
-                try:
-                    creds['password'] = encryption.encrypt(creds['password'])
-                except Exception as e:
-                    logger.error(f"Failed to encrypt credentials for user {username}: {str(e)}")
-                    raise ValueError("Failed to encrypt credentials")
         
         # Update the user in the list
         users = [updated_user if u['username'] == username else u for u in users]

@@ -47,8 +47,9 @@ class CalendarService:
             # Log the path we're trying to access
             log_error(user_data.get('user_id', 'unknown'), f"Attempting to access calendar at path: {calendar_path}")
             
-            # Get the calendar directly using the path
-            calendar = client.principal().calendar(calendar_path)
+            # Get the calendar directly using the URL
+            calendar_url = urljoin(creds.get('serverUrl', ''), calendar_path)
+            calendar = client.calendar(url=calendar_url)
             
             if not calendar:
                 raise ValueError('Calendar not found')
@@ -68,8 +69,9 @@ class CalendarService:
             creds = user_data.get('baikal_credentials', {})
             calendar_path = creds.get('calendarPath', '/calendars/test/default/')
             
-            # Get the calendar directly using the path
-            calendar = client.principal().calendar(calendar_path)
+            # Get the calendar directly using the URL
+            calendar_url = urljoin(creds.get('serverUrl', ''), calendar_path)
+            calendar = client.calendar(url=calendar_url)
             
             if not calendar:
                 raise ValueError('Calendar not found')

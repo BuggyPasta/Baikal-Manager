@@ -48,8 +48,9 @@ class AddressBookService:
             from ..utils.settings import log_error
             log_error(user_data.get('user_id', 'unknown'), f"Attempting to access address book at path: {book_path}")
             
-            # Get the address book directly using the path
-            book = client.principal().addressbook(book_path)
+            # Get the address book directly using the URL
+            book_url = urljoin(creds.get('serverUrl', ''), book_path)
+            book = client.addressbook(url=book_url)
             
             if not book:
                 raise ValueError('Address book not found')
@@ -70,8 +71,9 @@ class AddressBookService:
             creds = user_data.get('baikal_credentials', {})
             book_path = creds.get('addressBookPath', '/addressbooks/test/default/')
             
-            # Get the address book directly using the path
-            book = client.principal().addressbook(book_path)
+            # Get the address book directly using the URL
+            book_url = urljoin(creds.get('serverUrl', ''), book_path)
+            book = client.addressbook(url=book_url)
             
             if not book:
                 raise ValueError('Address book not found')
