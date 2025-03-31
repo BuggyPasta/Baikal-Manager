@@ -657,13 +657,6 @@ function getMinutesFromMidnight(date) {
   return date.getHours() * 60 + date.getMinutes()
 }
 
-const isToday = (date) => {
-  const today = new Date()
-  return date.getDate() === today.getDate() &&
-         date.getMonth() === today.getMonth() &&
-         date.getFullYear() === today.getFullYear()
-}
-
 const hasEvents = (date) => {
   return events.value.some(event => {
     const eventDate = new Date(event.start)
