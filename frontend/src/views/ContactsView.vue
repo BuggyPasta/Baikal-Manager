@@ -257,7 +257,9 @@ const filteredContacts = computed(() => {
 
 // Methods
 const fetchAddressBooks = async () => {
+  console.log('fetchAddressBooks called')
   if (!hasServerSettings.value) {
+    console.log('No server settings, returning early')
     error.value = 'Server settings not configured. Please configure Baikal settings first.'
     return
   }
@@ -265,7 +267,9 @@ const fetchAddressBooks = async () => {
   loading.value = true
   error.value = null
   try {
+    console.log('Fetching address books from API...')
     const response = await axios.get('/api/contacts/address-books')
+    console.log('Address books response:', response.data)
     
     if (response.data?.error) {
       error.value = response.data.error
@@ -433,33 +437,43 @@ const syncContacts = async () => {
 
 // Initial load
 onMounted(async () => {
+  console.log('ContactsView mounted')
   // Always initialize with empty arrays
   addressBooks.value = []
   contacts.value = []
   
   // Ensure settings are loaded
+  console.log('Loading settings...')
   await authStore.ensureSettings()
+  console.log('Settings loaded:', authStore.serverSettings)
   
   // Only fetch data if we have server settings
   if (hasServerSettings.value) {
+    console.log('Server settings found, fetching address books...')
     await fetchAddressBooks()
     if (selectedAddressBook.value) {
+      console.log('Address book selected, fetching contacts...')
       await fetchContacts()
     }
   } else {
+    console.log('No server settings found')
     error.value = 'Server settings not configured. Please configure Baikal settings first.'
   }
 })
 
 // Watch for server settings changes
 watch(() => authStore.serverSettings, async (newSettings) => {
+  console.log('Server settings changed:', newSettings)
   if (newSettings?.serverUrl) {
     error.value = null
+    console.log('Fetching address books...')
     await fetchAddressBooks()
     if (selectedAddressBook.value) {
+      console.log('Address book selected, fetching contacts...')
       await fetchContacts()
     }
   } else {
+    console.log('No server settings, clearing data')
     error.value = 'Server settings not configured. Please configure Baikal settings first.'
     addressBooks.value = []
     contacts.value = []

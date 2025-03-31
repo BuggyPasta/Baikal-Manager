@@ -436,7 +436,9 @@ function closeEventModal() {
 }
 
 const fetchEvents = async () => {
+  console.log('fetchEvents called')
   if (!hasServerSettings.value) {
+    console.log('No server settings, returning early')
     error.value = 'Server settings not configured. Please configure Baikal settings first.'
     return
   }
@@ -444,8 +446,10 @@ const fetchEvents = async () => {
   loading.value = true
   error.value = null
   try {
+    console.log('Fetching calendars...')
     // First get the calendar ID
     const calendarsResponse = await axios.get('/api/calendar/calendars')
+    console.log('Calendars response:', calendarsResponse.data)
     if (calendarsResponse.data?.error) {
       throw new Error(calendarsResponse.data.error)
     }
@@ -529,22 +533,28 @@ watch([currentView, currentDate], async () => {
 
 // Initialize calendar immediately
 onMounted(async () => {
+  console.log('CalendarView mounted')
   // Always initialize with empty events
   events.value = []
   
   // Ensure settings are loaded
+  console.log('Loading settings...')
   await authStore.ensureSettings()
+  console.log('Settings loaded:', authStore.serverSettings)
   
   // Only fetch events if we have server settings
   if (hasServerSettings.value) {
+    console.log('Server settings found, fetching events...')
     await fetchEvents()
   } else {
+    console.log('No server settings found')
     error.value = 'Server settings not configured. Please configure Baikal settings first.'
   }
 })
 
 // Watch for server settings changes
 watch(() => authStore.serverSettings, async (newSettings) => {
+  console.log('Server settings changed:', newSettings)
   if (newSettings?.serverUrl) {
     error.value = null
     await fetchEvents()
