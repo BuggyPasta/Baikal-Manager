@@ -88,17 +88,29 @@ def update_settings(settings):
         raise
 
 def get_user_data():
-    """Get the current user's data from the session."""
+    """Get the current user's data from the session, falling back to user store if needed."""
     user_id = session.get('user_id')
     logger.debug(f"Getting user data for user {user_id}")
     
     try:
+        # Try to get data from session first
         user_data = session.get('user_data')
+        if user_data:
+            logger.debug(f"User data retrieved from session for user {user_id}: {user_data}")
+            return user_data
+            
+        # Fall back to user store if session data is missing
+        logger.debug(f"No session data found for user {user_id}, trying user store")
+        user_store = get_user_store()
+        user_data = user_store.get_user(user_id)
+        
         if not user_data:
-            logger.warning(f"No user data in session for user {user_id}")
+            logger.warning(f"No user data found in store for user {user_id}")
             return None
             
-        logger.debug(f"User data retrieved for user {user_id}: {user_data}")
+        # Update session with data from store
+        session['user_data'] = user_data
+        logger.debug(f"User data retrieved from store for user {user_id}: {user_data}")
         return user_data
     except Exception as e:
         logger.error(f"Failed to get user data for user {user_id}: {str(e)}")
