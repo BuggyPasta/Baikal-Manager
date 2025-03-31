@@ -1,13 +1,53 @@
 <template>
   <div class="container mx-auto px-4 py-8">
     <!-- Header -->
-    <div class="flex justify-between items-center mb-4">
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Contacts</h1>
-      <div class="flex items-center space-x-4">
+    <div class="flex flex-col md:flex-row justify-between items-center mb-8">
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-4 md:mb-0">Contacts</h1>
+      
+      <div class="flex flex-col sm:flex-row gap-4">
+        <!-- Search -->
+        <div class="relative">
+          <input
+            type="text"
+            v-model="searchQuery"
+            placeholder="Search contacts..."
+            class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <svg
+            class="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+        </div>
+
+        <!-- Address Book Selection -->
+        <select
+          v-model="selectedAddressBook"
+          class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">All Address Books</option>
+          <option
+            v-for="book in addressBooks"
+            :key="book.id"
+            :value="book.id"
+          >
+            {{ book.name }}
+          </option>
+        </select>
+
+        <!-- Sync Button -->
         <button
-          class="btn-secondary"
           @click="syncContacts"
           :disabled="loading"
+          class="px-4 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center"
         >
           <svg v-if="loading" class="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
@@ -15,12 +55,29 @@
           </svg>
           Sync
         </button>
-        <button
-          class="btn-primary"
-          @click="openContactModal()"
-        >
-          Add Contact
-        </button>
+
+        <!-- Import/Export -->
+        <div class="flex gap-2">
+          <input
+            type="file"
+            ref="fileInput"
+            accept=".csv"
+            class="hidden"
+            @change="handleFileImport"
+          />
+          <button
+            @click="$refs.fileInput.click()"
+            class="px-4 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+          >
+            Import
+          </button>
+          <button
+            @click="exportContacts"
+            class="px-4 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+          >
+            Export
+          </button>
+        </div>
       </div>
     </div>
 
@@ -33,7 +90,7 @@
     <div v-else-if="error" class="bg-red-50 dark:bg-red-900 p-4 rounded-lg mb-8">
       <p class="text-red-800 dark:text-red-200">{{ error }}</p>
       <button
-        @click="syncContacts"
+        @click="fetchContacts"
         class="mt-2 text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200"
       >
         Try again
@@ -205,10 +262,10 @@ const fetchAddressBooks = async () => {
     return
   }
 
+  loading.value = true
+  error.value = null
   try {
-    console.log('Fetching address books with settings:', authStore.serverSettings)
     const response = await axios.get('/api/contacts/address-books')
-    console.log('Address books response:', response.data)
     
     if (response.data?.error) {
       error.value = response.data.error
@@ -217,11 +274,19 @@ const fetchAddressBooks = async () => {
     }
     
     addressBooks.value = Array.isArray(response.data) ? response.data : []
-    console.log('Processed address books:', addressBooks.value)
+    
+    // If we have address books but no selection, select the first one
+    if (addressBooks.value.length > 0 && !selectedAddressBook.value) {
+      selectedAddressBook.value = addressBooks.value[0].id
+      // Fetch contacts after selecting the first address book
+      await fetchContacts()
+    }
   } catch (err) {
-    console.error('Error fetching address books:', err)
     error.value = err.response?.data?.error || 'Failed to load address books'
+    console.error('Error fetching address books:', err)
     addressBooks.value = []
+  } finally {
+    loading.value = false
   }
 }
 
@@ -231,17 +296,20 @@ const fetchContacts = async () => {
     return
   }
 
+  if (!selectedAddressBook.value) {
+    error.value = 'No address book selected'
+    contacts.value = []
+    return
+  }
+
   loading.value = true
   error.value = null
   try {
-    console.log('Fetching contacts with settings:', authStore.serverSettings)
     const response = await axios.get('/api/contacts/contacts', {
       params: {
         addressBookId: selectedAddressBook.value
       }
     })
-    
-    console.log('Contacts response:', response.data)
     
     if (response.data?.error) {
       error.value = response.data.error
@@ -250,10 +318,9 @@ const fetchContacts = async () => {
     }
     
     contacts.value = Array.isArray(response.data) ? response.data : []
-    console.log('Processed contacts:', contacts.value)
   } catch (err) {
-    console.error('Error fetching contacts:', err)
     error.value = err.response?.data?.error || 'Failed to load contacts'
+    console.error('Error fetching contacts:', err)
     contacts.value = []
   } finally {
     loading.value = false
@@ -354,37 +421,11 @@ const syncContacts = async () => {
   loading.value = true
   error.value = null
   try {
-    console.log('Fetching contacts with settings:', authStore.serverSettings)
-    
-    // Fetch address books first
-    const addressBooksResponse = await axios.get('/api/contacts/address-books')
-    console.log('Address books response:', addressBooksResponse.data)
-    
-    if (addressBooksResponse.data?.error) {
-      error.value = addressBooksResponse.data.error
-      addressBooks.value = []
-      return
-    }
-    
-    addressBooks.value = Array.isArray(addressBooksResponse.data) ? addressBooksResponse.data : []
-    
-    // If we have a selected address book, fetch its contacts
-    if (selectedAddressBook.value) {
-      const contactsResponse = await axios.get(`/api/contacts/contacts/${selectedAddressBook.value.id}`)
-      console.log('Contacts response:', contactsResponse.data)
-      
-      if (contactsResponse.data?.error) {
-        error.value = contactsResponse.data.error
-        contacts.value = []
-        return
-      }
-      
-      contacts.value = Array.isArray(contactsResponse.data) ? contactsResponse.data : []
-    }
+    await fetchAddressBooks()
+    await fetchContacts()
   } catch (err) {
-    console.error('Error syncing contacts:', err)
     error.value = err.response?.data?.error || 'Failed to sync contacts'
-    contacts.value = []
+    console.error('Error syncing contacts:', err)
   } finally {
     loading.value = false
   }
@@ -392,16 +433,12 @@ const syncContacts = async () => {
 
 // Initial load
 onMounted(async () => {
-  // Always initialize with empty data
-  addressBooks.value = []
-  contacts.value = []
-  
   // Ensure settings are loaded
   await authStore.ensureSettings()
   
-  // Only fetch data if we have server settings
   if (hasServerSettings.value) {
-    await syncContacts()
+    await fetchAddressBooks()
+    await fetchContacts()
   } else {
     error.value = 'Server settings not configured. Please configure Baikal settings first.'
   }
@@ -411,16 +448,17 @@ onMounted(async () => {
 watch(() => authStore.serverSettings, async (newSettings) => {
   if (newSettings?.serverUrl) {
     error.value = null
-    await syncContacts()
+    await fetchAddressBooks()
+    await fetchContacts()
   } else {
     error.value = 'Server settings not configured. Please configure Baikal settings first.'
   }
 }, { immediate: true })
 
-// Watch for selected address book changes
-watch(selectedAddressBook, async (newAddressBook) => {
-  if (newAddressBook && hasServerSettings.value) {
-    await syncContacts()
+// Watch for address book changes to fetch new contacts
+watch(selectedAddressBook, async () => {
+  if (hasServerSettings.value) {
+    await fetchContacts()
   }
 })
 </script> 

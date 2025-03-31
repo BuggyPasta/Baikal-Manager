@@ -147,7 +147,7 @@
             <!-- Events list -->
             <div class="mt-1 space-y-1">
               <div
-                v-for="event in getEventsForDay(day.date)"
+                v-for="event in getDayEvents(day.date)"
                 :key="event.id"
                 @click="openEventModal(day.date, event)"
                 class="text-xs p-1 rounded cursor-pointer"
@@ -423,10 +423,10 @@ function openNewEventModal(date = null) {
   showEventModal.value = true
 }
 
-function openEventModal(date, event = null) {
-  showEventModal.value = true
-  selectedDate.value = date
+function openEventModal(event) {
   selectedEvent.value = event
+  selectedDate.value = new Date(event.start)
+  showEventModal.value = true
 }
 
 function closeEventModal() {
@@ -444,8 +444,24 @@ const fetchEvents = async () => {
   loading.value = true
   error.value = null
   try {
-    console.log('Fetching events with settings:', authStore.serverSettings)
-    
+    // First get the calendar ID
+    const calendarsResponse = await axios.get('/api/calendar/calendars')
+    if (calendarsResponse.data?.error) {
+      error.value = calendarsResponse.data.error
+      events.value = []
+      return
+    }
+
+    const calendars = Array.isArray(calendarsResponse.data) ? calendarsResponse.data : []
+    if (calendars.length === 0) {
+      error.value = 'No calendars found'
+      events.value = []
+      return
+    }
+
+    // Use the first calendar
+    const calendarId = calendars[0].id
+
     // Calculate date range based on current view
     let startDate, endDate
     if (currentView.value === 'month') {
@@ -454,35 +470,30 @@ const fetchEvents = async () => {
     } else if (currentView.value === 'week') {
       startDate = startOfWeek(currentDate.value, { weekStartsOn: 1 })
       endDate = endOfWeek(currentDate.value, { weekStartsOn: 1 })
-    } else if (currentView.value === 'day') {
-      startDate = new Date(currentDate.value.setHours(0, 0, 0, 0))
-      endDate = new Date(currentDate.value.setHours(23, 59, 59, 999))
     } else {
-      // For list view, show events for the next 30 days
-      startDate = new Date()
-      endDate = addDays(startDate, 30)
+      startDate = currentDate.value
+      endDate = addDays(currentDate.value, 1)
     }
 
-    const response = await axios.get('/api/calendar/events', {
+    // Fetch events for the date range
+    const eventsResponse = await axios.get('/api/calendar/events', {
       params: {
+        calendarId,
         start: startDate.toISOString(),
         end: endDate.toISOString()
       }
     })
-    
-    console.log('Calendar response:', response.data)
-    
-    if (response.data?.error) {
-      error.value = response.data.error
+
+    if (eventsResponse.data?.error) {
+      error.value = eventsResponse.data.error
       events.value = []
       return
     }
-    
-    events.value = Array.isArray(response.data) ? response.data : []
-    console.log('Processed events:', events.value)
+
+    events.value = Array.isArray(eventsResponse.data) ? eventsResponse.data : []
   } catch (err) {
-    console.error('Error fetching events:', err)
     error.value = err.response?.data?.error || 'Failed to load events'
+    console.error('Error fetching events:', err)
     events.value = []
   } finally {
     loading.value = false
@@ -655,23 +666,5 @@ function getEventStyles(event) {
 
 function getMinutesFromMidnight(date) {
   return date.getHours() * 60 + date.getMinutes()
-}
-
-const hasEvents = (date) => {
-  return events.value.some(event => {
-    const eventDate = new Date(event.start)
-    return eventDate.getDate() === date.getDate() &&
-           eventDate.getMonth() === date.getMonth() &&
-           eventDate.getFullYear() === date.getFullYear()
-  })
-}
-
-const getEventsForDay = (date) => {
-  return events.value.filter(event => {
-    const eventDate = new Date(event.start)
-    return eventDate.getDate() === date.getDate() &&
-           eventDate.getMonth() === date.getMonth() &&
-           eventDate.getFullYear() === date.getFullYear()
-  })
 }
 </script> 
