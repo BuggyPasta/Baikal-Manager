@@ -279,48 +279,10 @@ const showSuccess = (message) => {
 // Save settings
 const saveServerSettings = async () => {
   try {
-    setLoading(true, 'Verifying connection...')
-    errorMessage.value = ''
-    console.log('Attempting to verify connection with settings:', serverSettings.value)
-    
-    const verifyResponse = await fetch('/api/settings/baikal/verify', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(serverSettings.value)
-    })
-    
-    let verifyData
-    try {
-      const responseText = await verifyResponse.text()
-      console.log('Raw server response:', responseText)
-      try {
-        verifyData = JSON.parse(responseText)
-        console.log('Parsed server response:', {
-          ...verifyData,
-          password: verifyData.password ? '[REDACTED]' : undefined
-        })
-      } catch (parseError) {
-        console.error('Failed to parse server response:', parseError)
-        console.error('Raw response:', responseText)
-        errorMessage.value = 'Server returned an invalid response. Please check the server logs for more details.'
-        return
-      }
-    } catch (error) {
-      console.error('Failed to read server response:', error)
-      errorMessage.value = 'Failed to read server response'
-      return
-    }
-    
-    if (!verifyResponse.ok) {
-      errorMessage.value = verifyData.details || verifyData.error || 'Connection verification failed'
-      return
-    }
-    
     setLoading(true, 'Saving settings...')
-    // If verification passed, save the settings
-    const saveResponse = await fetch('/api/settings/baikal', {
+    errorMessage.value = ''
+    
+    const response = await fetch('/api/settings/baikal', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -328,14 +290,15 @@ const saveServerSettings = async () => {
       body: JSON.stringify(serverSettings.value)
     })
     
-    if (!saveResponse.ok) {
-      const saveData = await saveResponse.json()
-      errorMessage.value = saveData.error || 'Failed to save settings'
+    const data = await response.json()
+    
+    if (!response.ok) {
+      errorMessage.value = data.details || data.error || 'Failed to save settings'
       return
     }
     
     showSuccess('Settings saved successfully')
-    await authStore.getSettings()
+    await authStore.getSettings() // Refresh settings from server
   } catch (error) {
     console.error('Error saving settings:', error)
     errorMessage.value = error.message || 'Failed to save settings'

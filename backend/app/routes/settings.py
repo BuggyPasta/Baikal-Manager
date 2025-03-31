@@ -73,11 +73,13 @@ def save_baikal_settings():
     try:
         # Save settings only if connection verification passed
         get_user_store().update_user(user_id, {'baikal_credentials': data})
+        logger.debug(f"Settings saved successfully for user {user_id}")
         return jsonify({
             'message': 'Settings saved successfully',
-            'settings': data
+            'settings': {k: v for k, v in data.items() if k != 'password'}
         })
     except Exception as e:
+        logger.error(f"Failed to save settings for user {user_id}: {str(e)}")
         return jsonify({
             'error': 'Failed to save settings',
             'details': str(e)
@@ -169,6 +171,41 @@ def save_app_settings():
     try:
         get_user_store().update_user(user_id, {'app_settings': data})
         return jsonify({'message': 'Settings saved'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@bp.route('/', methods=['GET'])
+def get_settings():
+    user_id, user_data, error = require_auth()
+    if error:
+        return jsonify(error), error['code']
+    
+    # Combine all settings
+    settings = {
+        'baikal': user_data.get('baikal_credentials', {}),
+        'app': user_data.get('app_settings', DEFAULT_APP_SETTINGS)
+    }
+    return jsonify(settings)
+
+@bp.route('/', methods=['POST'])
+def save_settings():
+    user_id, user_data, error = require_auth()
+    if error:
+        return jsonify(error), error['code']
+    
+    if not (data := request.get_json()):
+        return jsonify({'error': 'No settings provided'}), 400
+    
+    try:
+        # Update user with combined settings
+        updates = {}
+        if 'baikal' in data:
+            updates['baikal_credentials'] = data['baikal']
+        if 'app' in data:
+            updates['app_settings'] = data['app']
+            
+        get_user_store().update_user(user_id, updates)
+        return jsonify({'message': 'Settings saved successfully'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
